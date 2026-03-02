@@ -348,7 +348,7 @@ function app() {
     },
 
     // ── AI ───────────────────────────────────────────────────
-    async generateAI() {
+    async generateAI(mode = 'mix') {
       if (!this.currentPlan) return;
       if (!this.aiConfigured) {
         this.activeTab = 'settings';
@@ -361,6 +361,7 @@ function app() {
         const result = await this.api('POST', '/ai/generate', {
           week_start: this.currentPlan.week_start,
           existing_plan_id: this.currentPlan.id,
+          mode,
         });
         // reload the plan to get updated days with meal objects
         this.currentPlan = await this.api('GET', `/plans/${result.plan_id}`);

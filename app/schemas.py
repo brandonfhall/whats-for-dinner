@@ -32,6 +32,7 @@ class MealOut(MealBase):
     id: int
     active: bool
     created_at: datetime
+    times_used: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -91,6 +92,7 @@ class WeeklyPlanSummary(BaseModel):
 class AIGenerateRequest(BaseModel):
     week_start: date
     existing_plan_id: Optional[int] = None
+    mode: str = "mix"  # "mix" = favour less-used meals, "safe" = favour favourites
 
 
 class AIDaySuggestion(BaseModel):

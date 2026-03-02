@@ -2,6 +2,7 @@ import json
 import os
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -35,6 +36,13 @@ def ai_status(db: Session = Depends(get_db)):
 
 def _get_meal_library(db: Session) -> list[dict]:
     meals = db.query(Meal).filter(Meal.active == True).all()  # noqa: E712
+    count_rows = (
+        db.query(PlanDay.meal_id, func.count(PlanDay.id).label("cnt"))
+        .filter(PlanDay.meal_id.is_not(None))
+        .group_by(PlanDay.meal_id)
+        .all()
+    )
+    count_map = {row.meal_id: row.cnt for row in count_rows}
     return [
         {
             "id": m.id,
@@ -45,6 +53,7 @@ def _get_meal_library(db: Session) -> list[dict]:
             "easy_to_make": m.easy_to_make,
             "shared_ingredients": m.shared_ingredients,
             "protein": m.protein,
+            "usage_count": count_map.get(m.id, 0),
         }
         for m in meals
     ]
@@ -82,13 +91,32 @@ def _build_prompt(
     history: list[dict],
     gym_days: list[int],
     eat_out_days: list[int],
+    mode: str = "mix",
 ) -> str:
     gym_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in gym_days]
     eat_out_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in eat_out_days]
 
+    if mode == "safe":
+        mode_instruction = (
+            "SELECTION STYLE — Play It Safe: treat meal selection like a weighted lottery "
+            "that favours proven household favourites. Meals with usage_count ≥ 5 get 3× "
+            "weight; meals with usage_count 0–1 get 0.5× weight. Still include 1–2 "
+            "less-used meals for variety. Do NOT simply pick the top-N by count every "
+            "time — use genuine weighted randomness so the week still feels fresh."
+        )
+    else:
+        mode_instruction = (
+            "SELECTION STYLE — Mix It Up: treat meal selection like a weighted lottery "
+            "that favours meals not used recently or infrequently. Meals with usage_count "
+            "0–1 or absent from the last 4 weeks of history get 4× weight; meals used in "
+            "the last 2 weeks get 0.3× weight. Still include 1–2 familiar favourites for "
+            "comfort. Do NOT simply pick the lowest-count meals every time — use genuine "
+            "weighted randomness so results vary each time you are asked."
+        )
+
     prompt = f"""You are helping plan dinners for a household for the week of {week_start.strftime('%B %d, %Y')}.
 
-MEAL LIBRARY (meals they know and like):
+MEAL LIBRARY (meals they know and like, with all-time usage_count):
 {json.dumps(library, indent=2)}
 
 RECENT HISTORY (last 8 weeks of dinners):
@@ -98,11 +126,13 @@ CONSTRAINTS FOR THIS WEEK:
 - Gym nights (prefer easy_to_make meals): {gym_strs if gym_strs else 'none'}
 - Eat-out nights (set day_type to eat_out, no meal_id needed): {eat_out_strs if eat_out_strs else 'none'}
 
+{mode_instruction}
+
 INSTRUCTIONS:
 1. Suggest a dinner for all 7 nights (Sunday through Saturday, days 0-6).
 2. For eat-out nights, set day_type to "eat_out" and provide a custom_name like "Pizza place" or "Mexican" — leave meal_id null.
 3. For gym nights, strongly prefer meals where easy_to_make is true. Set day_type to "home_cooked".
-4. For all other nights, pick from the meal library. Vary choices — avoid repeating meals used in the last 2 weeks if possible.
+4. For all other nights, pick from the meal library applying the selection style above.
 5. Try to vary the protein across the week — avoid scheduling the same protein on back-to-back nights when alternatives exist.
 6. When two consecutive home-cooked nights share ingredients, note it in the notes field.
 7. If a meal has has_leftovers=true, you may note that in the next day's notes.
@@ -227,7 +257,8 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
 
     history = _get_history(db, payload.week_start)
     prompt = _build_prompt(
-        payload.week_start, library, history, settings["gym_days"], settings["eat_out_days"]
+        payload.week_start, library, history, settings["gym_days"], settings["eat_out_days"],
+        mode=payload.mode,
     )
 
     configured, reason = _check_configured(provider)
