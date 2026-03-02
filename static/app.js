@@ -33,7 +33,7 @@ function app() {
     tabs: [
       { id: 'week',     label: "This Week",    short: "Week" },
       { id: 'library',  label: "Meal Library", short: "Library" },
-      { id: 'history',  label: "Past Weeks",   short: "Past" },
+      { id: 'month',    label: "Month View",   short: "Month" },
       { id: 'settings', label: "Settings",     short: "Settings" },
     ],
     activeTab: 'week',
@@ -80,9 +80,11 @@ function app() {
     proteins: PROTEINS,
     cuisines: CUISINES,
 
-    // ── History ─────────────────────────────────────────────
-    expandedPlan: null,
-    historyDetails: {},
+    // ── Month view ──────────────────────────────────────────
+    monthYear: new Date().getFullYear(),
+    monthMonth: new Date().getMonth(),   // 0-indexed
+    monthPlanDetails: {},                // plan_id → full WeeklyPlanOut (cache)
+    monthLoading: false,
 
     // ── Init ────────────────────────────────────────────────
     async init() {
@@ -90,7 +92,6 @@ function app() {
         this.loadCurrentPlan(),
         this.loadMeals(),
         this.loadSettings(),
-        this.loadPastPlans(),
         this.loadAIStatus(),
       ]);
     },
@@ -142,9 +143,8 @@ function app() {
 
     async switchTab(id) {
       this.activeTab = id;
-      // Lazily refresh stale data when the user navigates to a tab
       if (id === 'library') this.loadMeals();
-      if (id === 'history') this.loadPastPlans();
+      if (id === 'month') this.loadMonthData();
     },
 
     async clearWeek() {
@@ -169,10 +169,25 @@ function app() {
       this.settings = await this.api('GET', '/settings');
     },
 
-    async loadPastPlans() {
-      const all = await this.api('GET', '/plans');
-      const currentMonday = this.currentPlan?.week_start;
-      this.pastPlans = all.filter(p => p.week_start !== currentMonday);
+    async loadMonthData() {
+      this.monthLoading = true;
+      try {
+        this.pastPlans = await this.api('GET', '/plans');
+        const visibleWeekStarts = new Set(
+          this.monthCalendarWeeks().map(week => week[0])
+        );
+        const toLoad = this.pastPlans.filter(p =>
+          visibleWeekStarts.has(p.week_start) &&
+          p.week_start !== this.currentPlan?.week_start &&
+          !this.monthPlanDetails[p.id]
+        );
+        await Promise.all(toLoad.map(async p => {
+          const detail = await this.api('GET', `/plans/${p.id}`);
+          this.monthPlanDetails = { ...this.monthPlanDetails, [p.id]: detail };
+        }));
+      } finally {
+        this.monthLoading = false;
+      }
     },
 
     async loadAIStatus() {
@@ -409,29 +424,72 @@ function app() {
       }
     },
 
-    // ── History ─────────────────────────────────────────────
-    browseWeeks() {
-      this.activeTab = 'history';
+    // ── Month view helpers ───────────────────────────────────
+    monthLabel() {
+      return new Date(this.monthYear, this.monthMonth, 1)
+        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     },
 
-    async toggleHistoryPlan(planId) {
-      if (this.expandedPlan === planId) {
-        this.expandedPlan = null;
-        return;
-      }
-      this.expandedPlan = planId;
-      if (!this.historyDetails[planId]) {
-        const detail = await this.api('GET', `/plans/${planId}`);
-        this.historyDetails = { ...this.historyDetails, [planId]: detail };
-      }
+    prevMonth() {
+      if (this.monthMonth === 0) { this.monthMonth = 11; this.monthYear--; }
+      else { this.monthMonth--; }
+      this.loadMonthData();
     },
 
-    planStatusClass(status) {
-      return {
-        draft: 'bg-gray-100 text-gray-600',
-        active: 'bg-green-100 text-green-700',
-        complete: 'bg-blue-100 text-blue-700',
-      }[status] || 'bg-gray-100 text-gray-600';
+    nextMonth() {
+      if (this.monthMonth === 11) { this.monthMonth = 0; this.monthYear++; }
+      else { this.monthMonth++; }
+      this.loadMonthData();
+    },
+
+    monthCalendarWeeks() {
+      const firstDay = new Date(this.monthYear, this.monthMonth, 1);
+      const lastDay  = new Date(this.monthYear, this.monthMonth + 1, 0);
+      const start = new Date(firstDay);
+      start.setDate(start.getDate() - start.getDay());
+      const fmt = d => d.toLocaleDateString('en-CA');
+      const weeks = [];
+      const d = new Date(start);
+      while (true) {
+        const week = [];
+        for (let i = 0; i < 7; i++) { week.push(fmt(d)); d.setDate(d.getDate() + 1); }
+        weeks.push(week);
+        if (d > lastDay) break;
+      }
+      return weeks;
+    },
+
+    isCurrentMonth(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.getMonth() === this.monthMonth && d.getFullYear() === this.monthYear;
+    },
+
+    isToday(dateStr) {
+      return dateStr === new Date().toLocaleDateString('en-CA');
+    },
+
+    planForDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() - d.getDay());
+      const weekStart = d.toLocaleDateString('en-CA');
+      if (this.currentPlan?.week_start === weekStart) return this.currentPlan;
+      return this.pastPlans.find(p => p.week_start === weekStart) || null;
+    },
+
+    dayForDate(dateStr) {
+      const plan = this.planForDate(dateStr);
+      if (!plan) return null;
+      const full = plan.days ? plan : this.monthPlanDetails[plan.id];
+      if (!full?.days) return null;
+      const dow = new Date(dateStr + 'T00:00:00').getDay();
+      return full.days.find(d => d.day_of_week === dow) || null;
+    },
+
+    async jumpToWeek(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() - d.getDay());
+      this.activeTab = 'week';
+      await this.goToWeek(d.toLocaleDateString('en-CA'));
     },
 
     // ── Settings ─────────────────────────────────────────────

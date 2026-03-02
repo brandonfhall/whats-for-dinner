@@ -257,40 +257,54 @@
       </div>
     </div>
 
-    <!-- ── Past Weeks ────────────────────────────────────────── -->
-    <div x-show="activeTab === 'history'" x-transition>
-      <h1 class="text-2xl font-bold text-gray-900 mb-4">Past Weeks</h1>
-      <div class="space-y-3">
-        <template x-for="plan in pastPlans" :key="plan.id">
-          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <button
-              @click="toggleHistoryPlan(plan.id)"
-              class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-            >
-              <div>
-                <span class="font-semibold text-gray-800" x-text="weekLabel(plan.week_start)"></span>
-                <span class="ml-2 text-xs rounded-full px-2 py-0.5" :class="planStatusClass(plan.status)" x-text="plan.status"></span>
-                <span x-show="plan.ai_generated" class="ml-1 text-xs text-violet-600">✨ AI</span>
-              </div>
-              <span class="text-gray-400 text-sm" x-text="expandedPlan === plan.id ? '▲' : '▼'"></span>
-            </button>
-            <div x-show="expandedPlan === plan.id" x-transition>
-              <div x-show="!historyDetails[plan.id]" class="px-4 pb-3 text-sm text-gray-400">Loading…</div>
-              <div x-show="historyDetails[plan.id]" class="grid grid-cols-7 gap-px bg-gray-100 border-t border-gray-100">
-                <template x-for="day in sortedDays(historyDetails[plan.id])" :key="day.day_of_week">
-                  <div class="bg-white px-2 py-3 text-center">
-                    <p class="text-xs font-semibold text-gray-400 uppercase" x-text="dayName(day.day_of_week).slice(0,3)"></p>
-                    <p class="text-xs mt-1 text-gray-700 leading-tight" x-text="dayShortLabel(day)"></p>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-        </template>
-        <div x-show="pastPlans.length === 0" class="text-center py-12 text-gray-400">
-          No past plans yet
+    <!-- ── Month View ────────────────────────────────────────── -->
+    <div x-show="activeTab === 'month'" x-transition>
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold text-gray-900" x-text="monthLabel()"></h1>
+        <div class="flex gap-1">
+          <button @click="prevMonth()" class="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-sm font-medium">◀</button>
+          <button @click="nextMonth()" class="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-sm font-medium">▶</button>
         </div>
       </div>
+
+      <!-- Day-of-week header row -->
+      <div class="grid grid-cols-7 mb-1">
+        <template x-for="name in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="name">
+          <div class="text-center text-xs font-semibold text-gray-400 uppercase py-1" x-text="name"></div>
+        </template>
+      </div>
+
+      <!-- Calendar grid -->
+      <div x-show="!monthLoading" class="rounded-xl overflow-hidden border border-gray-200 bg-gray-100 grid gap-px">
+        <template x-for="week in monthCalendarWeeks()" :key="week[0]">
+          <div class="grid grid-cols-7 gap-px">
+            <template x-for="dateStr in week" :key="dateStr">
+              <div
+                @click="jumpToWeek(dateStr)"
+                class="bg-white cursor-pointer hover:bg-orange-50 transition-colors p-2 min-h-[68px]"
+                :class="{
+                  'opacity-40': !isCurrentMonth(dateStr),
+                  'ring-2 ring-inset ring-brand': isToday(dateStr),
+                }"
+              >
+                <p
+                  class="text-xs font-bold mb-0.5"
+                  :class="isToday(dateStr) ? 'text-brand' : 'text-gray-400'"
+                  x-text="parseInt(dateStr.split('-')[2])"
+                ></p>
+                <p
+                  x-show="dayForDate(dateStr) && dayForDate(dateStr).day_type !== 'skip'"
+                  class="text-xs leading-snug text-gray-700 line-clamp-2"
+                  x-text="dayShortLabel(dayForDate(dateStr))"
+                ></p>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="monthLoading" class="text-center py-16 text-gray-400">Loading…</div>
     </div>
 
     <!-- ── Settings ──────────────────────────────────────────── -->
