@@ -57,16 +57,17 @@
         <div class="flex gap-2">
           <button
             @click="generateAI()"
-            :disabled="aiLoading || !currentPlan"
-            :title="aiConfigured === false ? 'AI not configured — click to set up in Settings' : ''"
-            :class="aiConfigured === false
+            :disabled="aiLoading || !currentPlan || aiProvider === 'none'"
+            :title="aiProvider === 'none' ? 'AI is disabled (AI_PROVIDER=none)' : (!aiConfigured ? 'AI not configured — click to set up in Settings' : '')"
+            :class="!aiConfigured
               ? 'bg-gray-200 text-gray-500 cursor-pointer hover:bg-gray-300'
               : 'bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50'"
             class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <span x-show="aiLoading">Thinking…</span>
-            <span x-show="!aiLoading && aiConfigured !== false">✨ Suggest with AI</span>
-            <span x-show="!aiLoading && aiConfigured === false">✨ AI not configured</span>
+            <span x-show="!aiLoading && aiConfigured">✨ Suggest with AI</span>
+            <span x-show="!aiLoading && !aiConfigured && aiProvider === 'none'">✨ AI disabled</span>
+            <span x-show="!aiLoading && !aiConfigured && aiProvider !== 'none'">✨ AI not configured</span>
           </button>
           <button
             @click="browseWeeks()"
@@ -219,13 +220,18 @@
     <div x-show="activeTab === 'settings'" x-transition>
       <h1 class="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
 
-      <!-- AI not-configured banner -->
-      <div x-show="aiConfigured === false" class="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
+      <!-- AI disabled banner -->
+      <div x-show="aiProvider === 'none'" class="mb-5 p-4 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-700">
+        <p class="font-semibold mb-1">✨ AI suggestions are disabled</p>
+        <p>Set <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> to <code class="bg-gray-100 px-1 rounded">anthropic</code> or <code class="bg-gray-100 px-1 rounded">openai</code> in your <code class="bg-gray-100 px-1 rounded">.env</code> file to enable them.</p>
+      </div>
+
+      <!-- AI key-missing banner -->
+      <div x-show="!aiConfigured && aiProvider !== 'none'" class="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
         <p class="font-semibold mb-1">✨ AI meal suggestions are not configured</p>
-        <p>Add an API key to your <code class="bg-amber-100 px-1 rounded">.env</code> file and restart the container:</p>
-        <pre class="mt-2 bg-amber-100 rounded p-2 text-xs overflow-x-auto">AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...</pre>
-        <p class="mt-2">Or use OpenAI: set <code class="bg-amber-100 px-1 rounded">AI_PROVIDER=openai</code> and <code class="bg-amber-100 px-1 rounded">OPENAI_API_KEY</code>.</p>
+        <p>Add your API key to the <code class="bg-amber-100 px-1 rounded">.env</code> file and restart the container:</p>
+        <pre class="mt-2 bg-amber-100 rounded p-2 text-xs overflow-x-auto">AI_PROVIDER=anthropic   # or openai
+AI_API_KEY=sk-ant-...</pre>
       </div>
       <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
 

@@ -15,13 +15,13 @@ DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 
 
 def _check_configured(provider: str) -> tuple[bool, str | None]:
-    """Return (is_configured, reason_if_not)."""
-    if provider == "openai":
-        if not os.getenv("OPENAI_API_KEY"):
-            return False, "OPENAI_API_KEY is not set in your .env file."
-    else:
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            return False, "ANTHROPIC_API_KEY is not set in your .env file."
+    """Return (is_configured, reason_if_not).
+    reason=None means intentionally disabled (provider='none'), not misconfigured.
+    """
+    if provider == "none":
+        return False, None
+    if not os.getenv("AI_API_KEY"):
+        return False, "AI_API_KEY is not set in your .env file."
     return True, None
 
 
@@ -125,9 +125,9 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
 
 def _call_anthropic(prompt: str) -> list[dict]:
     import anthropic
-    key = os.getenv("ANTHROPIC_API_KEY")
+    key = os.getenv("AI_API_KEY")
     if not key:
-        raise ValueError("ANTHROPIC_API_KEY is not set in your .env file.")
+        raise ValueError("AI_API_KEY is not set in your .env file.")
     client = anthropic.Anthropic(api_key=key)
     message = client.messages.create(
         model="claude-sonnet-4-6",
@@ -141,9 +141,9 @@ def _call_anthropic(prompt: str) -> list[dict]:
 
 def _call_openai(prompt: str) -> list[dict]:
     from openai import OpenAI
-    key = os.getenv("OPENAI_API_KEY")
+    key = os.getenv("AI_API_KEY")
     if not key:
-        raise ValueError("OPENAI_API_KEY is not set in your .env file.")
+        raise ValueError("AI_API_KEY is not set in your .env file.")
     client = OpenAI(api_key=key)
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -232,6 +232,8 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
 
     configured, reason = _check_configured(provider)
     if not configured:
+        if reason is None:
+            raise HTTPException(status_code=400, detail="AI is disabled (AI_PROVIDER=none).")
         raise HTTPException(status_code=503, detail=reason)
 
     try:

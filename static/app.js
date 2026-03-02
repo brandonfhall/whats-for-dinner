@@ -42,7 +42,8 @@ function app() {
     aiLoading: false,
     aiError: null,
     aiSuccess: false,
-    aiConfigured: null,   // null = unknown, true = ready, false = not configured
+    aiConfigured: null,   // null = unknown, true = ready, false = not configured/disabled
+    aiProvider: null,     // "anthropic" | "openai" | "none" | null
 
     // ── Settings UI ─────────────────────────────────────────
     settingsSaving: false,
@@ -114,8 +115,10 @@ function app() {
       try {
         const status = await this.api('GET', '/ai/status');
         this.aiConfigured = status.configured;
+        this.aiProvider = status.provider;
       } catch {
         this.aiConfigured = false;
+        this.aiProvider = null;
       }
     },
 

@@ -11,5 +11,6 @@ COPY static/ ./static/
 RUN mkdir -p /app/data
 
 ENV PYTHONUNBUFFERED=1
+ENV APP_PORT=8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT}"]

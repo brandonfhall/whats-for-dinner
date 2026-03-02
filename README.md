@@ -28,17 +28,14 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-# AI provider: "anthropic" (default) or "openai"
+# AI provider: "anthropic", "openai", or "none" to disable AI suggestions
 AI_PROVIDER=anthropic
 
-# Anthropic Claude API key
-ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI key (only needed if AI_PROVIDER=openai)
-# OPENAI_API_KEY=sk-...
+# API key for whichever provider is active above
+AI_API_KEY=sk-ant-...
 ```
 
-AI is optional — the app works fine without a key, and the UI will tell you clearly if it's not configured.
+AI is optional — set `AI_PROVIDER=none` to disable it entirely, or leave `AI_API_KEY` blank and the UI will tell you clearly it's not configured.
 
 ### 2. Set your Traefik hostname
 
