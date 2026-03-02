@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What's For Dinner?</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#f97316', light: '#fed7aa', dark: '#c2410c' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .day-card { transition: box-shadow 0.15s, transform 0.15s; }
+    .day-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+    .slide-panel { transition: transform 0.25s ease, opacity 0.25s ease; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans" x-data="app()" x-init="init()" x-cloak>
+
+  <!-- Nav -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
+      <span class="text-brand font-bold text-xl tracking-tight">🍽 What's For Dinner?</span>
+      <div class="flex gap-1">
+        <template x-for="tab in tabs" :key="tab.id">
+          <button
+            @click="activeTab = tab.id"
+            :class="activeTab === tab.id
+              ? 'bg-brand text-white'
+              : 'text-gray-600 hover:bg-gray-100'"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            x-text="tab.label"
+          ></button>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-4 py-6">
+
+    <!-- ── This Week ─────────────────────────────────────────── -->
+    <div x-show="activeTab === 'week'" x-transition>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">This Week</h1>
+          <p class="text-sm text-gray-500" x-text="currentPlan ? weekLabel(currentPlan.week_start) : 'Loading…'"></p>
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="generateAI()"
+            :disabled="aiLoading || !currentPlan"
+            :title="aiConfigured === false ? 'AI not configured — click to set up in Settings' : ''"
+            :class="aiConfigured === false
+              ? 'bg-gray-200 text-gray-500 cursor-pointer hover:bg-gray-300'
+              : 'bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50'"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <span x-show="aiLoading">Thinking…</span>
+            <span x-show="!aiLoading && aiConfigured !== false">✨ Suggest with AI</span>
+            <span x-show="!aiLoading && aiConfigured === false">✨ AI not configured</span>
+          </button>
+          <button
+            @click="browseWeeks()"
+            class="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Browse weeks
+          </button>
+        </div>
+      </div>
+
+      <!-- AI error -->
+      <div x-show="aiError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" x-text="aiError"></div>
+      <!-- AI success -->
+      <div x-show="aiSuccess" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+        ✅ AI has filled in suggestions — review and adjust each day below.
+      </div>
+
+      <!-- 7-day grid -->
+      <div x-show="currentPlan" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <template x-for="day in sortedDays(currentPlan)" :key="day.day_of_week">
+          <div
+            @click="openDayEditor(day)"
+            class="day-card cursor-pointer bg-white rounded-xl border-2 p-4 select-none"
+            :class="dayCardClass(day)"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="dayName(day.day_of_week)"></span>
+              <span class="text-base" x-text="dayIcon(day)"></span>
+            </div>
+            <template x-if="day.day_type === 'home_cooked' && day.meal">
+              <div>
+                <p class="font-semibold text-gray-800 text-sm leading-tight" x-text="day.meal.name"></p>
+                <div class="flex flex-wrap gap-1 mt-1.5">
+                  <span x-show="day.meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
+                  <span x-show="day.meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
+                </div>
+              </div>
+            </template>
+            <template x-if="day.day_type === 'eat_out'">
+              <p class="font-semibold text-gray-700 text-sm" x-text="day.custom_name || 'Eating out'"></p>
+            </template>
+            <template x-if="day.day_type === 'skip'">
+              <p class="text-gray-400 text-sm italic">Not planned</p>
+            </template>
+            <template x-if="day.day_type === 'home_cooked' && !day.meal">
+              <p class="text-gray-400 text-sm italic">Pick a meal…</p>
+            </template>
+            <p x-show="day.notes" class="mt-1.5 text-xs text-gray-400 italic truncate" x-text="day.notes"></p>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="!currentPlan" class="text-center py-16 text-gray-400">Loading plan…</div>
+    </div>
+
+    <!-- ── Meal Library ───────────────────────────────────────── -->
+    <div x-show="activeTab === 'library'" x-transition>
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold text-gray-900">Meal Library</h1>
+        <button
+          @click="openMealEditor(null)"
+          class="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
+        >
+          + Add Meal
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <input
+          x-model="mealSearch"
+          type="text"
+          placeholder="Search meals…"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <template x-for="meal in filteredMeals()" :key="meal.id">
+          <div class="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-gray-800 truncate" x-text="meal.name"></p>
+                <div class="flex flex-wrap gap-1 mt-1.5">
+                  <span class="text-xs rounded px-1.5 py-0.5" :class="mealTypeClass(meal.meal_type)" x-text="mealTypeLabel(meal.meal_type)"></span>
+                  <span x-show="meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
+                  <span x-show="meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
+                </div>
+                <p x-show="meal.notes" class="mt-1.5 text-xs text-gray-500 line-clamp-2" x-text="meal.notes"></p>
+              </div>
+              <div class="flex items-center gap-1 ml-2 shrink-0">
+                <a
+                  x-show="meal.recipe_url"
+                  :href="meal.recipe_url"
+                  target="_blank"
+                  @click.stop
+                  class="text-gray-400 hover:text-brand transition-colors"
+                  title="Recipe link"
+                >🔗</a>
+                <button @click="openMealEditor(meal)" class="text-gray-400 hover:text-gray-700 p-1 rounded transition-colors">✏️</button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div x-show="filteredMeals().length === 0" class="col-span-full text-center py-12 text-gray-400">
+          <p class="text-lg">No meals yet</p>
+          <p class="text-sm mt-1">Add your first meal to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Past Weeks ────────────────────────────────────────── -->
+    <div x-show="activeTab === 'history'" x-transition>
+      <h1 class="text-2xl font-bold text-gray-900 mb-4">Past Weeks</h1>
+      <div class="space-y-3">
+        <template x-for="plan in pastPlans" :key="plan.id">
+          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <button
+              @click="toggleHistoryPlan(plan.id)"
+              class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+            >
+              <div>
+                <span class="font-semibold text-gray-800" x-text="weekLabel(plan.week_start)"></span>
+                <span class="ml-2 text-xs rounded-full px-2 py-0.5" :class="planStatusClass(plan.status)" x-text="plan.status"></span>
+                <span x-show="plan.ai_generated" class="ml-1 text-xs text-violet-600">✨ AI</span>
+              </div>
+              <span class="text-gray-400 text-sm" x-text="expandedPlan === plan.id ? '▲' : '▼'"></span>
+            </button>
+            <div x-show="expandedPlan === plan.id" x-transition>
+              <div x-show="!historyDetails[plan.id]" class="px-4 pb-3 text-sm text-gray-400">Loading…</div>
+              <div x-show="historyDetails[plan.id]" class="grid grid-cols-7 gap-px bg-gray-100 border-t border-gray-100">
+                <template x-for="day in sortedDays(historyDetails[plan.id])" :key="day.day_of_week">
+                  <div class="bg-white px-2 py-3 text-center">
+                    <p class="text-xs font-semibold text-gray-400 uppercase" x-text="dayName(day.day_of_week).slice(0,3)"></p>
+                    <p class="text-xs mt-1 text-gray-700 leading-tight" x-text="dayShortLabel(day)"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div x-show="pastPlans.length === 0" class="text-center py-12 text-gray-400">
+          No past plans yet
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Settings ──────────────────────────────────────────── -->
+    <div x-show="activeTab === 'settings'" x-transition>
+      <h1 class="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+
+      <!-- AI not-configured banner -->
+      <div x-show="aiConfigured === false" class="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
+        <p class="font-semibold mb-1">✨ AI meal suggestions are not configured</p>
+        <p>Add an API key to your <code class="bg-amber-100 px-1 rounded">.env</code> file and restart the container:</p>
+        <pre class="mt-2 bg-amber-100 rounded p-2 text-xs overflow-x-auto">AI_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...</pre>
+        <p class="mt-2">Or use OpenAI: set <code class="bg-amber-100 px-1 rounded">AI_PROVIDER=openai</code> and <code class="bg-amber-100 px-1 rounded">OPENAI_API_KEY</code>.</p>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+
+        <!-- Gym nights -->
+        <div class="px-5 py-4">
+          <p class="font-medium text-gray-800 mb-1">Gym nights</p>
+          <p class="text-sm text-gray-500 mb-3">On these nights the AI will prefer easy-to-make meals.</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="(name, idx) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="idx">
+              <button
+                @click="toggleDay('gym_days', idx)"
+                :class="settings.gym_days.includes(idx) ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                x-text="name"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Eat-out nights -->
+        <div class="px-5 py-4">
+          <p class="font-medium text-gray-800 mb-1">Default eat-out nights</p>
+          <p class="text-sm text-gray-500 mb-3">These days are pre-set as "eating out" in new weekly plans.</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="(name, idx) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="idx">
+              <button
+                @click="toggleDay('eat_out_days', idx)"
+                :class="settings.eat_out_days.includes(idx) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                x-text="name"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- AI provider -->
+        <div class="px-5 py-4">
+          <p class="font-medium text-gray-800 mb-1">AI provider</p>
+          <p class="text-sm text-gray-500 mb-3">Set via the <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> environment variable in your <code class="bg-gray-100 px-1 rounded">.env</code> file. Current value:</p>
+          <span class="inline-block bg-violet-100 text-violet-800 text-sm font-medium px-3 py-1 rounded-full" x-text="settings.ai_provider || 'anthropic'"></span>
+        </div>
+
+        <div class="px-5 py-4">
+          <button
+            @click="saveSettings()"
+            :disabled="settingsSaving"
+            class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
+          >
+            <span x-show="!settingsSaving">Save settings</span>
+            <span x-show="settingsSaving">Saving…</span>
+          </button>
+          <span x-show="settingsSaved" class="ml-3 text-sm text-green-600">✓ Saved</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Day Editor Slide Panel ────────────────────────────── -->
+  <div
+    x-show="dayEditorOpen"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 bg-black/40 z-50"
+    @click.self="dayEditorOpen = false"
+  >
+    <div
+      class="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl flex flex-col slide-panel"
+      x-transition:enter="transition ease-out duration-250"
+      x-transition:enter-start="translate-x-full"
+      x-transition:enter-end="translate-x-0"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="translate-x-0"
+      x-transition:leave-end="translate-x-full"
+    >
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <h2 class="font-semibold text-gray-900" x-text="editingDay ? dayName(editingDay.day_of_week) : ''"></h2>
+        <button @click="dayEditorOpen = false" class="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+        <!-- Day type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Evening type</label>
+          <div class="flex gap-2">
+            <template x-for="opt in [{v:'home_cooked',l:'Home cooked',c:'green'},{v:'eat_out',l:'Eat out',c:'blue'},{v:'skip',l:'No plan',c:'gray'}]" :key="opt.v">
+              <button
+                @click="editDayForm.day_type = opt.v"
+                :class="editDayForm.day_type === opt.v ? `bg-${opt.c}-600 text-white border-${opt.c}-600` : 'bg-white text-gray-600 border-gray-300'"
+                class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
+                x-text="opt.l"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Meal picker (home_cooked) -->
+        <div x-show="editDayForm.day_type === 'home_cooked'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Meal</label>
+          <input
+            x-model="mealPickerSearch"
+            type="text"
+            placeholder="Search meals…"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-brand"
+          />
+          <div class="space-y-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200">
+            <template x-for="meal in filteredPickerMeals()" :key="meal.id">
+              <button
+                @click="editDayForm.meal_id = meal.id; editDayForm.meal_name = meal.name"
+                :class="editDayForm.meal_id === meal.id ? 'bg-green-50 border-green-400' : 'bg-white border-transparent hover:bg-gray-50'"
+                class="w-full text-left px-3 py-2.5 border-l-2 transition-colors flex items-center justify-between"
+              >
+                <div>
+                  <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
+                  <div class="flex gap-1 mt-0.5">
+                    <span x-show="meal.easy_to_make" class="text-xs text-yellow-600">⚡ easy</span>
+                    <span x-show="meal.has_leftovers" class="text-xs text-blue-600">📦 leftovers</span>
+                  </div>
+                </div>
+                <span x-show="editDayForm.meal_id === meal.id" class="text-green-500 text-sm">✓</span>
+              </button>
+            </template>
+            <div x-show="filteredPickerMeals().length === 0" class="px-3 py-4 text-sm text-gray-400 text-center">No meals found</div>
+          </div>
+        </div>
+
+        <!-- Custom name (eat_out) -->
+        <div x-show="editDayForm.day_type === 'eat_out'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Where / what?</label>
+          <input
+            x-model="editDayForm.custom_name"
+            type="text"
+            placeholder="e.g. Chipotle, Thai place, Pizza…"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          />
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+          <textarea
+            x-model="editDayForm.notes"
+            rows="3"
+            placeholder="e.g. Uses leftover chicken from Monday…"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="px-5 py-4 border-t border-gray-200 flex gap-2">
+        <button
+          @click="saveDay()"
+          :disabled="daySaving"
+          class="flex-1 py-2.5 bg-brand text-white rounded-lg font-medium text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
+        >
+          <span x-show="!daySaving">Save</span>
+          <span x-show="daySaving">Saving…</span>
+        </button>
+        <button @click="dayEditorOpen = false" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Meal Editor Modal ─────────────────────────────────── -->
+  <div
+    x-show="mealEditorOpen"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+    @click.self="mealEditorOpen = false"
+  >
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h2 class="font-semibold text-gray-900" x-text="editingMeal ? 'Edit Meal' : 'Add Meal'"></h2>
+        <button @click="mealEditorOpen = false" class="text-gray-400 hover:text-gray-700 text-xl">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+          <input x-model="mealForm.name" type="text" placeholder="Chicken stir fry…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+          <div class="flex gap-2">
+            <template x-for="opt in [{v:'home_cooked',l:'Home cooked'},{v:'eat_out',l:'Eat out'},{v:'other',l:'Other'}]" :key="opt.v">
+              <button
+                @click="mealForm.meal_type = opt.v"
+                :class="mealForm.meal_type === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
+                class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
+                x-text="opt.l"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" x-model="mealForm.easy_to_make" class="w-4 h-4 accent-yellow-500" />
+            <span class="text-sm text-gray-700">⚡ Easy to make</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" x-model="mealForm.has_leftovers" class="w-4 h-4 accent-blue-500" />
+            <span class="text-sm text-gray-700">📦 Has leftovers</span>
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Recipe link</label>
+          <input x-model="mealForm.recipe_url" type="url" placeholder="https://…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea x-model="mealForm.notes" rows="3" placeholder="Any notes about this meal…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Shared ingredients with</label>
+          <input x-model="mealForm.shared_ingredients" type="text" placeholder="e.g. Same chicken as Monday's tacos" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-gray-200 flex items-center gap-2">
+        <button
+          @click="saveMeal()"
+          :disabled="mealSaving || !mealForm.name.trim()"
+          class="flex-1 py-2.5 bg-brand text-white rounded-lg font-medium text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
+        >
+          <span x-show="!mealSaving" x-text="editingMeal ? 'Save changes' : 'Add meal'"></span>
+          <span x-show="mealSaving">Saving…</span>
+        </button>
+        <button x-show="editingMeal" @click="deleteMeal()" class="px-4 py-2.5 border border-red-200 text-red-500 rounded-lg text-sm hover:bg-red-50 transition-colors">Delete</button>
+        <button @click="mealEditorOpen = false" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

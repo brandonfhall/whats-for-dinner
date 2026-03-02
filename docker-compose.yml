@@ -1,0 +1,16 @@
+services:
+  whats-for-dinner:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - dinner-data:/app/data
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dinner.rule=Host(`HOSTNAME_PLACEHOLDER`)"
+      - "traefik.http.services.dinner.loadbalancer.server.port=8000"
+      - "traefik.http.routers.dinner.entrypoints=web"
+
+volumes:
+  dinner-data:

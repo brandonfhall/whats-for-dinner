@@ -1,0 +1,140 @@
+from datetime import date, timedelta
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+
+from app.database import get_db
+from app.models import WeeklyPlan, PlanDay, DayType, PlanStatus
+from app.schemas import WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, PlanDayUpdate, PlanDayOut
+from app.routers.settings import get_all_settings
+
+router = APIRouter(prefix="/api/plans", tags=["plans"])
+
+DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _monday_of(d: date) -> date:
+    """Return the Monday of the week containing d."""
+    return d - timedelta(days=d.weekday())
+
+
+def _build_plan_days(plan_id: int, gym_days: list[int], eat_out_days: list[int]) -> list[PlanDay]:
+    days = []
+    for dow in range(7):
+        if dow in eat_out_days:
+            day_type = DayType.eat_out
+        elif dow in gym_days:
+            day_type = DayType.home_cooked  # gym night — still home, AI will prefer easy meals
+        else:
+            day_type = DayType.skip
+        days.append(PlanDay(plan_id=plan_id, day_of_week=dow, day_type=day_type))
+    return days
+
+
+def _load_plan(plan_id: int, db: Session) -> WeeklyPlan:
+    plan = (
+        db.query(WeeklyPlan)
+        .options(joinedload(WeeklyPlan.days).joinedload(PlanDay.meal))
+        .filter(WeeklyPlan.id == plan_id)
+        .first()
+    )
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
+
+
+@router.get("", response_model=list[WeeklyPlanSummary])
+def list_plans(db: Session = Depends(get_db)):
+    return db.query(WeeklyPlan).order_by(WeeklyPlan.week_start.desc()).all()
+
+
+@router.get("/current", response_model=WeeklyPlanOut)
+def get_or_create_current_plan(db: Session = Depends(get_db)):
+    monday = _monday_of(date.today())
+    plan = (
+        db.query(WeeklyPlan)
+        .options(joinedload(WeeklyPlan.days).joinedload(PlanDay.meal))
+        .filter(WeeklyPlan.week_start == monday)
+        .first()
+    )
+    if plan:
+        return plan
+
+    # create it
+    settings = get_all_settings(db)
+    plan = WeeklyPlan(week_start=monday, status=PlanStatus.draft)
+    db.add(plan)
+    db.flush()  # get plan.id
+    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
+    db.add_all(days)
+    db.commit()
+    return _load_plan(plan.id, db)
+
+
+@router.post("", response_model=WeeklyPlanOut, status_code=201)
+def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
+    week_start = _monday_of(payload.week_start)
+    existing = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="A plan for that week already exists")
+
+    settings = get_all_settings(db)
+    plan = WeeklyPlan(week_start=week_start, status=PlanStatus.draft)
+    db.add(plan)
+    db.flush()
+    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
+    db.add_all(days)
+    db.commit()
+    return _load_plan(plan.id, db)
+
+
+@router.get("/{plan_id}", response_model=WeeklyPlanOut)
+def get_plan(plan_id: int, db: Session = Depends(get_db)):
+    return _load_plan(plan_id, db)
+
+
+@router.put("/{plan_id}/days/{dow}", response_model=PlanDayOut)
+def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Depends(get_db)):
+    if dow < 0 or dow > 6:
+        raise HTTPException(status_code=422, detail="day_of_week must be 0-6")
+    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    day = db.query(PlanDay).filter(PlanDay.plan_id == plan_id, PlanDay.day_of_week == dow).first()
+    if not day:
+        day = PlanDay(plan_id=plan_id, day_of_week=dow)
+        db.add(day)
+
+    day.day_type = payload.day_type
+    day.meal_id = payload.meal_id if payload.day_type == DayType.home_cooked else None
+    day.custom_name = payload.custom_name
+    day.notes = payload.notes
+    db.commit()
+    db.refresh(day)
+    # reload meal relationship
+    db.refresh(day)
+    if day.meal_id:
+        from sqlalchemy.orm import joinedload as jl
+        day = db.query(PlanDay).options(jl(PlanDay.meal)).filter(PlanDay.id == day.id).first()
+    return day
+
+
+@router.put("/{plan_id}/status", response_model=WeeklyPlanSummary)
+def update_plan_status(plan_id: int, status: PlanStatus, db: Session = Depends(get_db)):
+    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    plan.status = status
+    db.commit()
+    db.refresh(plan)
+    return plan
+
+
+@router.delete("/{plan_id}", status_code=204)
+def delete_plan(plan_id: int, db: Session = Depends(get_db)):
+    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    db.query(PlanDay).filter(PlanDay.plan_id == plan_id).delete()
+    db.delete(plan)
+    db.commit()
