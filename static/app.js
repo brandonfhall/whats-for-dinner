@@ -233,11 +233,10 @@ function app() {
     dayCardClass(day) {
       if (!day) return 'border-gray-200';
       const isGym = this.settings.gym_days.includes(day.day_of_week);
-      if (day.day_type === 'home_cooked') {
-        return isGym ? 'border-yellow-300 bg-yellow-50' : 'border-green-300';
-      }
-      if (day.day_type === 'eat_out') return 'border-blue-300';
-      return isGym ? 'border-yellow-200' : 'border-gray-200 opacity-60';
+      const bg = isGym ? 'bg-yellow-50' : '';
+      if (day.day_type === 'home_cooked') return `border-green-300 ${bg}`;
+      if (day.day_type === 'eat_out') return `border-blue-300 ${bg}`;
+      return isGym ? `border-yellow-200 ${bg}` : 'border-gray-200 opacity-60';
     },
 
     dayShortLabel(day) {
