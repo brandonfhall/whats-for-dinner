@@ -37,6 +37,7 @@ class Meal(Base):
     has_leftovers: Mapped[bool] = mapped_column(Boolean, default=False)
     easy_to_make: Mapped[bool] = mapped_column(Boolean, default=False)
     shared_ingredients: Mapped[str] = mapped_column(String, default="")
+    protein: Mapped[str] = mapped_column(String, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

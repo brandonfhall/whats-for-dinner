@@ -15,6 +15,7 @@ class MealBase(BaseModel):
     has_leftovers: bool = False
     easy_to_make: bool = False
     shared_ingredients: str = ""
+    protein: str = ""  # e.g. "Chicken", "Beef", "Tofu" — selected from a preset list
 
 
 class MealCreate(MealBase):

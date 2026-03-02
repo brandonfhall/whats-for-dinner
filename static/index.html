@@ -100,6 +100,7 @@
               <div>
                 <p class="font-semibold text-gray-800 text-sm leading-tight" x-text="day.meal.name"></p>
                 <div class="flex flex-wrap gap-1 mt-1.5">
+                  <span x-show="day.meal.protein" class="text-xs rounded px-1.5 py-0.5" :class="proteinChipClass(proteinInfo(day.meal.protein)?.group)" x-text="(proteinInfo(day.meal.protein)?.emoji || '') + ' ' + day.meal.protein"></span>
                   <span x-show="day.meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
                   <span x-show="day.meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
                 </div>
@@ -151,6 +152,7 @@
                 <p class="font-semibold text-gray-800 truncate" x-text="meal.name"></p>
                 <div class="flex flex-wrap gap-1 mt-1.5">
                   <span class="text-xs rounded px-1.5 py-0.5" :class="mealTypeClass(meal.meal_type)" x-text="mealTypeLabel(meal.meal_type)"></span>
+                  <span x-show="meal.protein" class="text-xs rounded px-1.5 py-0.5" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
                   <span x-show="meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
                   <span x-show="meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
                 </div>
@@ -344,6 +346,7 @@ ANTHROPIC_API_KEY=sk-ant-...</pre>
                 <div>
                   <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
                   <div class="flex gap-1 mt-0.5">
+                    <span x-show="meal.protein" class="text-xs" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
                     <span x-show="meal.easy_to_make" class="text-xs text-yellow-600">⚡ easy</span>
                     <span x-show="meal.has_leftovers" class="text-xs text-blue-600">📦 leftovers</span>
                   </div>
@@ -422,6 +425,27 @@ ANTHROPIC_API_KEY=sk-ant-...</pre>
                 :class="mealForm.meal_type === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
                 class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
                 x-text="opt.l"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Protein</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              @click="mealForm.protein = ''"
+              :class="mealForm.protein === '' ? 'bg-gray-200 text-gray-700 ring-1 ring-gray-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+              class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+            >None</button>
+            <template x-for="p in proteins" :key="p.value">
+              <button
+                @click="mealForm.protein = p.value"
+                :class="mealForm.protein === p.value
+                  ? (p.group === 'meat' ? 'bg-red-200 text-red-800 ring-1 ring-red-400' : 'bg-teal-200 text-teal-800 ring-1 ring-teal-400')
+                  : (p.group === 'meat' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-teal-50 text-teal-600 hover:bg-teal-100')"
+                class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                x-text="p.emoji + ' ' + p.value"
               ></button>
             </template>
           </div>

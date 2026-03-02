@@ -1,5 +1,26 @@
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+const PROTEINS = [
+  { value: 'Chicken',    emoji: '🍗', group: 'meat' },
+  { value: 'Beef',       emoji: '🥩', group: 'meat' },
+  { value: 'Pork',       emoji: '🐷', group: 'meat' },
+  { value: 'Turkey',     emoji: '🦃', group: 'meat' },
+  { value: 'Fish',       emoji: '🐟', group: 'meat' },
+  { value: 'Seafood',    emoji: '🦐', group: 'meat' },
+  { value: 'Lamb',       emoji: '🐑', group: 'meat' },
+  { value: 'Tofu',       emoji: '🫘', group: 'veg' },
+  { value: 'Eggs',       emoji: '🥚', group: 'veg' },
+  { value: 'Beans',      emoji: '🫘', group: 'veg' },
+  { value: 'Lentils',    emoji: '🌱', group: 'veg' },
+  { value: 'Tempeh',     emoji: '🌿', group: 'veg' },
+  { value: 'Cheese',     emoji: '🧀', group: 'veg' },
+  { value: 'Vegetarian', emoji: '🥦', group: 'veg' },
+];
+
+function proteinEmoji(value) {
+  return PROTEINS.find(p => p.value === value)?.emoji || '';
+}
+
 function app() {
   return {
     // ── Navigation ──────────────────────────────────────────
@@ -37,9 +58,10 @@ function app() {
     // ── Meal editor ─────────────────────────────────────────
     mealEditorOpen: false,
     editingMeal: null,
-    mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '' },
+    mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '' },
     mealSearch: '',
     mealSaving: false,
+    proteins: PROTEINS,
 
     // ── History ─────────────────────────────────────────────
     expandedPlan: null,
@@ -169,6 +191,16 @@ function app() {
         eat_out: 'bg-blue-100 text-blue-700',
         other: 'bg-gray-100 text-gray-600',
       }[t] || 'bg-gray-100 text-gray-600';
+    },
+
+    proteinChipClass(group) {
+      return group === 'meat'
+        ? 'bg-red-100 text-red-700'
+        : 'bg-teal-100 text-teal-700';
+    },
+
+    proteinInfo(value) {
+      return PROTEINS.find(p => p.value === value) || null;
     },
 
     // ── Day editor ──────────────────────────────────────────
