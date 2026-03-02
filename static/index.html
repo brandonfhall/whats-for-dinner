@@ -95,7 +95,10 @@
           >
             <div class="flex items-start justify-between mb-2">
               <span class="text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="dayName(day.day_of_week)"></span>
-              <span class="text-base" x-text="dayIcon(day)"></span>
+              <div class="flex items-center gap-1">
+                <span x-show="settings.gym_days.includes(day.day_of_week)" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">gym</span>
+                <span class="text-base" x-text="dayIcon(day)"></span>
+              </div>
             </div>
             <template x-if="day.day_type === 'home_cooked' && day.meal">
               <div>
@@ -240,7 +243,7 @@ AI_API_KEY=sk-ant-...</pre>
           <p class="font-medium text-gray-800 mb-1">Gym nights</p>
           <p class="text-sm text-gray-500 mb-3">On these nights the AI will prefer easy-to-make meals.</p>
           <div class="flex flex-wrap gap-2">
-            <template x-for="(name, idx) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="idx">
+            <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
               <button
                 @click="toggleDay('gym_days', idx)"
                 :class="settings.gym_days.includes(idx) ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
@@ -256,7 +259,7 @@ AI_API_KEY=sk-ant-...</pre>
           <p class="font-medium text-gray-800 mb-1">Default eat-out nights</p>
           <p class="text-sm text-gray-500 mb-3">These days are pre-set as "eating out" in new weekly plans.</p>
           <div class="flex flex-wrap gap-2">
-            <template x-for="(name, idx) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="idx">
+            <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
               <button
                 @click="toggleDay('eat_out_days', idx)"
                 :class="settings.eat_out_days.includes(idx) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'"
@@ -312,7 +315,10 @@ AI_API_KEY=sk-ant-...</pre>
       x-transition:leave-end="translate-x-full"
     >
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <h2 class="font-semibold text-gray-900" x-text="editingDay ? dayName(editingDay.day_of_week) : ''"></h2>
+        <div class="flex items-center gap-2">
+          <h2 class="font-semibold text-gray-900" x-text="editingDay ? dayName(editingDay.day_of_week) : ''"></h2>
+          <span x-show="editingDay && settings.gym_days.includes(editingDay.day_of_week)" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">🏋️ Gym night</span>
+        </div>
         <button @click="dayEditorOpen = false" class="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
       </div>
 

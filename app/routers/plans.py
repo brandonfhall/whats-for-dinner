@@ -9,12 +9,12 @@ from app.routers.settings import get_all_settings
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 
-DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 
-def _monday_of(d: date) -> date:
-    """Return the Monday of the week containing d."""
-    return d - timedelta(days=d.weekday())
+def _sunday_of(d: date) -> date:
+    """Return the Sunday that starts the week containing d."""
+    return d - timedelta(days=(d.weekday() + 1) % 7)
 
 
 def _build_plan_days(plan_id: int, gym_days: list[int], eat_out_days: list[int]) -> list[PlanDay]:
@@ -49,7 +49,7 @@ def list_plans(db: Session = Depends(get_db)):
 
 @router.get("/current", response_model=WeeklyPlanOut)
 def get_or_create_current_plan(db: Session = Depends(get_db)):
-    monday = _monday_of(date.today())
+    monday = _sunday_of(date.today())
     plan = (
         db.query(WeeklyPlan)
         .options(joinedload(WeeklyPlan.days).joinedload(PlanDay.meal))
@@ -72,7 +72,7 @@ def get_or_create_current_plan(db: Session = Depends(get_db)):
 
 @router.post("", response_model=WeeklyPlanOut, status_code=201)
 def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
-    week_start = _monday_of(payload.week_start)
+    week_start = _sunday_of(payload.week_start)
     existing = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
     if existing:
         raise HTTPException(status_code=409, detail="A plan for that week already exists")

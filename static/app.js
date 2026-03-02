@@ -1,4 +1,4 @@
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const PROTEINS = [
   { value: 'Chicken',    emoji: '🍗', group: 'meat' },
@@ -146,22 +146,19 @@ function app() {
 
     dayIcon(day) {
       if (!day) return '';
-      if (day.day_type === 'home_cooked') {
-        if (this.settings.gym_days.includes(day.day_of_week)) return '🏋️';
-        return '🍳';
-      }
+      if (day.day_type === 'home_cooked') return '🍳';
       if (day.day_type === 'eat_out') return '🍽️';
       return '—';
     },
 
     dayCardClass(day) {
       if (!day) return 'border-gray-200';
+      const isGym = this.settings.gym_days.includes(day.day_of_week);
       if (day.day_type === 'home_cooked') {
-        if (this.settings.gym_days.includes(day.day_of_week)) return 'border-yellow-300 bg-yellow-50';
-        return 'border-green-300';
+        return isGym ? 'border-yellow-300 bg-yellow-50' : 'border-green-300';
       }
       if (day.day_type === 'eat_out') return 'border-blue-300';
-      return 'border-gray-200 opacity-60';
+      return isGym ? 'border-yellow-200 opacity-60' : 'border-gray-200 opacity-60';
     },
 
     dayShortLabel(day) {

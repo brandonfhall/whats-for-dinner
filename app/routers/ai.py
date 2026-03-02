@@ -11,7 +11,7 @@ from app.routers.settings import get_all_settings
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
-DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 
 def _check_configured(provider: str) -> tuple[bool, str | None]:
@@ -245,9 +245,9 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"AI request failed: {exc}") from exc
 
     # get or create the plan
-    from app.routers.plans import _monday_of, _build_plan_days, _load_plan
+    from app.routers.plans import _sunday_of, _build_plan_days, _load_plan
 
-    week_start = _monday_of(payload.week_start)
+    week_start = _sunday_of(payload.week_start)
     plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
     if payload.existing_plan_id:
         plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == payload.existing_plan_id).first()

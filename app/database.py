@@ -29,6 +29,7 @@ def _run_migrations():
             conn.commit()
 
 
+
 def init_db():
     from app import models  # noqa: F401 — ensures models are registered
     Base.metadata.create_all(bind=engine)
