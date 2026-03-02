@@ -25,10 +25,10 @@ function app() {
   return {
     // ── Navigation ──────────────────────────────────────────
     tabs: [
-      { id: 'week',     label: "This Week" },
-      { id: 'library',  label: "Meal Library" },
-      { id: 'history',  label: "Past Weeks" },
-      { id: 'settings', label: "Settings" },
+      { id: 'week',     label: "This Week",    short: "Week" },
+      { id: 'library',  label: "Meal Library", short: "Library" },
+      { id: 'history',  label: "Past Weeks",   short: "Past" },
+      { id: 'settings', label: "Settings",     short: "Settings" },
     ],
     activeTab: 'week',
 
@@ -49,6 +49,10 @@ function app() {
     // ── Settings UI ─────────────────────────────────────────
     settingsSaving: false,
     settingsSaved: false,
+
+    // ── Clear week ──────────────────────────────────────────
+    confirmClearOpen: false,
+    clearingWeek: false,
 
     // ── Day editor ──────────────────────────────────────────
     dayEditorOpen: false,
@@ -121,6 +125,19 @@ function app() {
 
     async goToThisWeek() {
       await this.goToWeek(this.thisWeekStart);
+    },
+
+    async clearWeek() {
+      if (!this.currentPlan) return;
+      this.clearingWeek = true;
+      try {
+        const weekStart = this.currentPlan.week_start;
+        await this.api('DELETE', `/plans/${this.currentPlan.id}`);
+        this.currentPlan = await this.api('GET', `/plans/week/${weekStart}`);
+      } finally {
+        this.clearingWeek = false;
+        this.confirmClearOpen = false;
+      }
     },
 
     async loadMeals() {
@@ -264,6 +281,15 @@ function app() {
             carry_forward: this.editDayForm.carry_forward,
           }
         );
+        // auto-add new eat-out places to the meal library
+        if (this.editDayForm.day_type === 'eat_out') {
+          const name = this.editDayForm.custom_name.trim();
+          const exists = this.meals.some(m => m.meal_type === 'eat_out' && m.name.toLowerCase() === name.toLowerCase());
+          if (name && !exists) {
+            await this.api('POST', '/meals', { name, meal_type: 'eat_out', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '' });
+            await this.loadMeals();
+          }
+        }
         // update the local plan
         const idx = this.currentPlan.days.findIndex(d => d.day_of_week === dow);
         if (idx >= 0) {
