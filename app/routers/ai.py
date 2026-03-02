@@ -83,8 +83,8 @@ def _build_prompt(
     gym_days: list[int],
     eat_out_days: list[int],
 ) -> str:
-    gym_names = [DAY_NAMES[d] for d in gym_days]
-    eat_out_names = [DAY_NAMES[d] for d in eat_out_days]
+    gym_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in gym_days]
+    eat_out_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in eat_out_days]
 
     prompt = f"""You are helping plan dinners for a household for the week of {week_start.strftime('%B %d, %Y')}.
 
@@ -95,11 +95,11 @@ RECENT HISTORY (last 8 weeks of dinners):
 {json.dumps(history, indent=2)}
 
 CONSTRAINTS FOR THIS WEEK:
-- Gym nights (prefer easy_to_make meals): {gym_names if gym_names else 'none'}
-- Eat-out nights (set day_type to eat_out, no meal_id needed): {eat_out_names if eat_out_names else 'none'}
+- Gym nights (prefer easy_to_make meals): {gym_strs if gym_strs else 'none'}
+- Eat-out nights (set day_type to eat_out, no meal_id needed): {eat_out_strs if eat_out_strs else 'none'}
 
 INSTRUCTIONS:
-1. Suggest a dinner for all 7 nights (Monday through Sunday, days 0-6).
+1. Suggest a dinner for all 7 nights (Sunday through Saturday, days 0-6).
 2. For eat-out nights, set day_type to "eat_out" and provide a custom_name like "Pizza place" or "Mexican" — leave meal_id null.
 3. For gym nights, strongly prefer meals where easy_to_make is true. Set day_type to "home_cooked".
 4. For all other nights, pick from the meal library. Vary choices — avoid repeating meals used in the last 2 weeks if possible.
