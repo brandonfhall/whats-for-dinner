@@ -219,27 +219,26 @@ def test_carry_forward_propagates_meal_to_next_week(client, meals):
     assert thursday["carry_forward"] is True  # pin propagates
 
 
-def test_carry_forward_does_not_overwrite_gym_day(client, meals):
-    """Gym days are home_cooked (not skip), so carry-forward skips them."""
+def test_carry_forward_works_on_gym_day(client, meals):
+    """Carry-forward can fill a gym day — gym is just a visual hint, not a lock."""
     client.put("/api/settings", json={"gym_days": [1], "eat_out_days": [], "ai_provider": "none"})
 
     plan = client.get("/api/plans/current").json()
     week_start = plan["week_start"]
 
-    # Pin Monday (day 1, a gym night) with a specific meal
+    # Pin Monday (day 1, a gym night) as eat-out
     client.put(f"/api/plans/{plan['id']}/days/1", json={
-        "day_type": "home_cooked", "meal_id": meals[0]["id"],
-        "custom_name": "", "notes": "", "carry_forward": True,
+        "day_type": "eat_out", "meal_id": None,
+        "custom_name": "Chipotle", "notes": "", "carry_forward": True,
     })
 
     next_sunday = date.fromisoformat(week_start) + timedelta(weeks=1)
     next_plan = client.get(f"/api/plans/week/{next_sunday.isoformat()}").json()
 
     monday = next(d for d in next_plan["days"] if d["day_of_week"] == 1)
-    # Gym day is pre-set to home_cooked but carry-forward does not fill the meal
-    # (carry-forward only fills days that are still skip)
-    assert monday["day_type"] == "home_cooked"
-    assert monday["meal_id"] is None
+    assert monday["day_type"] == "eat_out"
+    assert monday["custom_name"] == "Chipotle"
+    assert monday["carry_forward"] is True
 
 
 def test_carry_forward_false_does_not_propagate(client, meals):
@@ -258,6 +257,49 @@ def test_carry_forward_false_does_not_propagate(client, meals):
     saturday = next(d for d in next_plan["days"] if d["day_of_week"] == 6)
     assert saturday["meal_id"] is None
     assert saturday["day_type"] == "skip"
+
+
+def test_carry_forward_eat_out_plain_day(client):
+    """Eat-out carry-forward copies custom_name to the same day when it starts as skip."""
+    plan = client.get("/api/plans/current").json()
+    week_start = plan["week_start"]
+
+    # Pin Wednesday (day 3) as eat-out with a custom name
+    client.put(f"/api/plans/{plan['id']}/days/3", json={
+        "day_type": "eat_out", "meal_id": None,
+        "custom_name": "Chipotle", "notes": "", "carry_forward": True,
+    })
+
+    next_sunday = date.fromisoformat(week_start) + timedelta(weeks=1)
+    next_plan = client.get(f"/api/plans/week/{next_sunday.isoformat()}").json()
+
+    wednesday = next(d for d in next_plan["days"] if d["day_of_week"] == 3)
+    assert wednesday["day_type"] == "eat_out"
+    assert wednesday["custom_name"] == "Chipotle"
+    assert wednesday["carry_forward"] is True
+
+
+def test_carry_forward_eat_out_settings_day(client):
+    """Eat-out carry-forward fills custom_name even when the day is pre-set to eat_out by settings."""
+    # Wednesday (3) is an eat_out day in settings — new plans auto-set it to eat_out with no name
+    client.put("/api/settings", json={"gym_days": [], "eat_out_days": [3], "ai_provider": "none"})
+
+    plan = client.get("/api/plans/current").json()
+    week_start = plan["week_start"]
+
+    # Set Wednesday's custom name and pin it
+    client.put(f"/api/plans/{plan['id']}/days/3", json={
+        "day_type": "eat_out", "meal_id": None,
+        "custom_name": "Chipotle", "notes": "", "carry_forward": True,
+    })
+
+    next_sunday = date.fromisoformat(week_start) + timedelta(weeks=1)
+    next_plan = client.get(f"/api/plans/week/{next_sunday.isoformat()}").json()
+
+    wednesday = next(d for d in next_plan["days"] if d["day_of_week"] == 3)
+    assert wednesday["day_type"] == "eat_out"
+    assert wednesday["custom_name"] == "Chipotle"
+    assert wednesday["carry_forward"] is True
 
 
 # ── Delete plan ───────────────────────────────────────────────────────────────

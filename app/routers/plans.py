@@ -44,7 +44,17 @@ def _apply_carry_forward(days: list[PlanDay], sunday: date, db: Session) -> None
     }
     for day in days:
         src = carry.get(day.day_of_week)
-        if src and day.day_type == DayType.skip:
+        if not src:
+            continue
+        # A day is "unfilled" if it hasn't been explicitly planned yet —
+        # skip, eat_out with no custom name, or home_cooked with no meal
+        # (the last two are just defaults from settings, not real choices).
+        unfilled = (
+            day.day_type == DayType.skip
+            or (day.day_type == DayType.eat_out and not day.custom_name)
+            or (day.day_type == DayType.home_cooked and not day.meal_id)
+        )
+        if unfilled:
             day.day_type = src.day_type
             day.meal_id = src.meal_id
             day.custom_name = src.custom_name
