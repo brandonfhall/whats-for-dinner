@@ -34,6 +34,7 @@ function app() {
 
     // ── Data ────────────────────────────────────────────────
     currentPlan: null,
+    thisWeekStart: null,   // the actual current week's Sunday (for "Today" button)
     pastPlans: [],
     meals: [],
     settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic' },
@@ -52,7 +53,7 @@ function app() {
     // ── Day editor ──────────────────────────────────────────
     dayEditorOpen: false,
     editingDay: null,
-    editDayForm: { day_type: 'skip', meal_id: null, meal_name: '', custom_name: '', notes: '' },
+    editDayForm: { day_type: 'skip', meal_id: null, meal_name: '', custom_name: '', notes: '', carry_forward: false },
     mealPickerSearch: '',
     daySaving: false,
 
@@ -95,6 +96,31 @@ function app() {
     // ── Loaders ─────────────────────────────────────────────
     async loadCurrentPlan() {
       this.currentPlan = await this.api('GET', '/plans/current');
+      this.thisWeekStart = this.currentPlan?.week_start ?? null;
+    },
+
+    async goToWeek(weekStart) {
+      this.currentPlan = await this.api('GET', `/plans/week/${weekStart}`);
+    },
+
+    async prevWeek() {
+      const d = new Date(this.currentPlan.week_start + 'T00:00:00');
+      d.setDate(d.getDate() - 7);
+      await this.goToWeek(d.toISOString().split('T')[0]);
+    },
+
+    async nextWeek() {
+      const d = new Date(this.currentPlan.week_start + 'T00:00:00');
+      d.setDate(d.getDate() + 7);
+      await this.goToWeek(d.toISOString().split('T')[0]);
+    },
+
+    isThisWeek() {
+      return this.currentPlan?.week_start === this.thisWeekStart;
+    },
+
+    async goToThisWeek() {
+      await this.goToWeek(this.thisWeekStart);
     },
 
     async loadMeals() {
@@ -158,7 +184,7 @@ function app() {
         return isGym ? 'border-yellow-300 bg-yellow-50' : 'border-green-300';
       }
       if (day.day_type === 'eat_out') return 'border-blue-300';
-      return isGym ? 'border-yellow-200 opacity-60' : 'border-gray-200 opacity-60';
+      return isGym ? 'border-yellow-200' : 'border-gray-200 opacity-60';
     },
 
     dayShortLabel(day) {
@@ -213,6 +239,7 @@ function app() {
         meal_name: day.meal ? day.meal.name : '',
         custom_name: day.custom_name || '',
         notes: day.notes || '',
+        carry_forward: day.carry_forward || false,
       };
       this.dayEditorOpen = true;
     },
@@ -230,6 +257,7 @@ function app() {
             meal_id: this.editDayForm.day_type === 'home_cooked' ? this.editDayForm.meal_id : null,
             custom_name: this.editDayForm.custom_name,
             notes: this.editDayForm.notes,
+            carry_forward: this.editDayForm.carry_forward,
           }
         );
         // update the local plan

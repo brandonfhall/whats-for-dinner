@@ -30,6 +30,48 @@ def _build_plan_days(plan_id: int, gym_days: list[int], eat_out_days: list[int])
     return days
 
 
+def _apply_carry_forward(days: list[PlanDay], sunday: date, db: Session) -> None:
+    """For any skip day in `days`, copy assignment from previous week if carry_forward=True."""
+    prev_sunday = sunday - timedelta(weeks=1)
+    prev_plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == prev_sunday).first()
+    if not prev_plan:
+        return
+    carry = {
+        d.day_of_week: d
+        for d in db.query(PlanDay).filter(
+            PlanDay.plan_id == prev_plan.id, PlanDay.carry_forward == True  # noqa: E712
+        ).all()
+    }
+    for day in days:
+        src = carry.get(day.day_of_week)
+        if src and day.day_type == DayType.skip:
+            day.day_type = src.day_type
+            day.meal_id = src.meal_id
+            day.custom_name = src.custom_name
+            day.carry_forward = True
+
+
+def _get_or_create_plan(sunday: date, db: Session) -> WeeklyPlan:
+    """Return existing plan for the week, or create one (with carry-forward applied)."""
+    plan = (
+        db.query(WeeklyPlan)
+        .options(joinedload(WeeklyPlan.days).joinedload(PlanDay.meal))
+        .filter(WeeklyPlan.week_start == sunday)
+        .first()
+    )
+    if plan:
+        return plan
+    settings = get_all_settings(db)
+    plan = WeeklyPlan(week_start=sunday, status=PlanStatus.draft)
+    db.add(plan)
+    db.flush()
+    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
+    _apply_carry_forward(days, sunday, db)
+    db.add_all(days)
+    db.commit()
+    return _load_plan(plan.id, db)
+
+
 def _load_plan(plan_id: int, db: Session) -> WeeklyPlan:
     plan = (
         db.query(WeeklyPlan)
@@ -49,42 +91,20 @@ def list_plans(db: Session = Depends(get_db)):
 
 @router.get("/current", response_model=WeeklyPlanOut)
 def get_or_create_current_plan(db: Session = Depends(get_db)):
-    monday = _sunday_of(date.today())
-    plan = (
-        db.query(WeeklyPlan)
-        .options(joinedload(WeeklyPlan.days).joinedload(PlanDay.meal))
-        .filter(WeeklyPlan.week_start == monday)
-        .first()
-    )
-    if plan:
-        return plan
+    return _get_or_create_plan(_sunday_of(date.today()), db)
 
-    # create it
-    settings = get_all_settings(db)
-    plan = WeeklyPlan(week_start=monday, status=PlanStatus.draft)
-    db.add(plan)
-    db.flush()  # get plan.id
-    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
-    db.add_all(days)
-    db.commit()
-    return _load_plan(plan.id, db)
+
+@router.get("/week/{week_start}", response_model=WeeklyPlanOut)
+def get_or_create_plan_for_week(week_start: date, db: Session = Depends(get_db)):
+    return _get_or_create_plan(_sunday_of(week_start), db)
 
 
 @router.post("", response_model=WeeklyPlanOut, status_code=201)
 def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
     week_start = _sunday_of(payload.week_start)
-    existing = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
-    if existing:
+    if db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first():
         raise HTTPException(status_code=409, detail="A plan for that week already exists")
-
-    settings = get_all_settings(db)
-    plan = WeeklyPlan(week_start=week_start, status=PlanStatus.draft)
-    db.add(plan)
-    db.flush()
-    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
-    db.add_all(days)
-    db.commit()
-    return _load_plan(plan.id, db)
+    return _get_or_create_plan(week_start, db)
 
 
 @router.get("/{plan_id}", response_model=WeeklyPlanOut)
@@ -109,6 +129,7 @@ def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Dep
     day.meal_id = payload.meal_id if payload.day_type == DayType.home_cooked else None
     day.custom_name = payload.custom_name
     day.notes = payload.notes
+    day.carry_forward = payload.carry_forward
     db.commit()
     db.refresh(day)
     # reload meal relationship

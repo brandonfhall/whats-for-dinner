@@ -63,11 +63,12 @@ class PlanDay(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("weekly_plans.id"), nullable=False)
-    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)  # 0=Mon … 6=Sun
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)  # 0=Sun … 6=Sat
     day_type: Mapped[DayType] = mapped_column(SAEnum(DayType), default=DayType.skip)
     meal_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("meals.id"), nullable=True)
     custom_name: Mapped[str] = mapped_column(String, default="")  # for eat_out nights
     notes: Mapped[str] = mapped_column(String, default="")
+    carry_forward: Mapped[bool] = mapped_column(Boolean, default=False)
 
     plan: Mapped["WeeklyPlan"] = relationship("WeeklyPlan", back_populates="days")
     meal: Mapped["Meal | None"] = relationship("Meal", back_populates="plan_days")

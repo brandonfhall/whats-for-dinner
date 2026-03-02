@@ -43,6 +43,7 @@ class PlanDayUpdate(BaseModel):
     meal_id: Optional[int] = None
     custom_name: str = ""
     notes: str = ""
+    carry_forward: bool = False
 
 
 class PlanDayOut(BaseModel):
@@ -52,6 +53,7 @@ class PlanDayOut(BaseModel):
     meal_id: Optional[int]
     custom_name: str
     notes: str
+    carry_forward: bool = False
     meal: Optional[MealOut] = None
 
     model_config = {"from_attributes": True}

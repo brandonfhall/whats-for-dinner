@@ -23,9 +23,14 @@ def get_db():
 def _run_migrations():
     """Add new columns to existing tables without dropping data."""
     with engine.connect() as conn:
-        existing = {row[1] for row in conn.execute(text("PRAGMA table_info(meals)"))}
-        if "protein" not in existing:
+        meal_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(meals)"))}
+        if "protein" not in meal_cols:
             conn.execute(text("ALTER TABLE meals ADD COLUMN protein TEXT DEFAULT ''"))
+            conn.commit()
+
+        day_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(plan_days)"))}
+        if "carry_forward" not in day_cols:
+            conn.execute(text("ALTER TABLE plan_days ADD COLUMN carry_forward INTEGER DEFAULT 0"))
             conn.commit()
 
 
