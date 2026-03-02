@@ -167,6 +167,33 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ---
 
+## Tests
+
+The project has 67 tests covering the meals, plans, settings, and AI endpoints. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+
+### Run locally
+
+You'll need Python 3.12. Create a virtual environment, install both dependency files, and run pytest:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt -r requirements-test.txt
+pytest
+```
+
+For a coverage report:
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+### CI
+
+Tests run automatically on every push and pull request to `main` via GitHub Actions (see [.github/workflows/test.yml](.github/workflows/test.yml)). No API keys are required — all AI calls are mocked.
+
+---
+
 ## Data & Backups
 
 All data is stored in a single SQLite file inside the `dinner-data` Docker volume. To back it up:
