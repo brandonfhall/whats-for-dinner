@@ -381,6 +381,21 @@ AI_API_KEY=sk-ant-...</pre>
         <!-- Custom name (eat_out) -->
         <div x-show="editDayForm.day_type === 'eat_out'">
           <label class="block text-sm font-medium text-gray-700 mb-2">Where / what?</label>
+          <!-- Library quick-picks -->
+          <template x-if="filteredEatOutMeals().length > 0">
+            <div class="space-y-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 mb-2">
+              <template x-for="meal in filteredEatOutMeals()" :key="meal.id">
+                <button
+                  @click="editDayForm.custom_name = meal.name"
+                  :class="editDayForm.custom_name === meal.name ? 'bg-blue-50 border-blue-400' : 'bg-white border-transparent hover:bg-gray-50'"
+                  class="w-full text-left px-3 py-2.5 border-l-2 transition-colors flex items-center justify-between"
+                >
+                  <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
+                  <span x-show="editDayForm.custom_name === meal.name" class="text-blue-500 text-sm">✓</span>
+                </button>
+              </template>
+            </div>
+          </template>
           <input
             x-model="editDayForm.custom_name"
             type="text"

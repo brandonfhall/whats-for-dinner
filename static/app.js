@@ -207,6 +207,10 @@ function app() {
         .filter(m => !q || m.name.toLowerCase().includes(q));
     },
 
+    filteredEatOutMeals() {
+      return this.meals.filter(m => m.meal_type === 'eat_out');
+    },
+
     mealTypeLabel(t) {
       return { home_cooked: 'Home cooked', eat_out: 'Eat out', other: 'Other' }[t] || t;
     },
