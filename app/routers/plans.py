@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models import WeeklyPlan, PlanDay, DayType, PlanStatus
-from app.schemas import WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, PlanDayUpdate, PlanDayOut
+from app.schemas import WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, WeeklyPlanNotesUpdate, PlanDayUpdate, PlanDayOut
 from app.routers.settings import get_all_settings
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
@@ -142,12 +142,20 @@ def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Dep
     day.carry_forward = payload.carry_forward
     db.commit()
     db.refresh(day)
-    # reload meal relationship
-    db.refresh(day)
     if day.meal_id:
-        from sqlalchemy.orm import joinedload as jl
-        day = db.query(PlanDay).options(jl(PlanDay.meal)).filter(PlanDay.id == day.id).first()
+        day = db.query(PlanDay).options(joinedload(PlanDay.meal)).filter(PlanDay.id == day.id).first()
     return day
+
+
+@router.put("/{plan_id}/notes", response_model=WeeklyPlanSummary)
+def update_plan_notes(plan_id: int, payload: WeeklyPlanNotesUpdate, db: Session = Depends(get_db)):
+    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    plan.notes = payload.notes
+    db.commit()
+    db.refresh(plan)
+    return plan
 
 
 @router.put("/{plan_id}/status", response_model=WeeklyPlanSummary)

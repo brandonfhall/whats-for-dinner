@@ -153,3 +153,47 @@ def test_delete_meal_soft_deletes(client):
 def test_delete_meal_not_found_returns_404(client):
     r = client.delete("/api/meals/99999")
     assert r.status_code == 404
+
+
+# ── Usage count ───────────────────────────────────────────────────────────────
+
+def test_times_used_reflects_plan_assignments(client):
+    """times_used increments each time a meal is assigned to a plan day."""
+    meal = create_meal(client, "Usage Counter Dish")
+    assert client.get(f"/api/meals/{meal['id']}").json()["times_used"] == 0
+
+    plan = client.get("/api/plans/current").json()
+    client.put(f"/api/plans/{plan['id']}/days/2", json={
+        "day_type": "home_cooked", "meal_id": meal["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    assert client.get(f"/api/meals/{meal['id']}").json()["times_used"] == 1
+
+    # Assign the same meal to a second day — count should go to 2
+    client.put(f"/api/plans/{plan['id']}/days/4", json={
+        "day_type": "home_cooked", "meal_id": meal["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+    assert client.get(f"/api/meals/{meal['id']}").json()["times_used"] == 2
+
+
+# ── Cuisine ───────────────────────────────────────────────────────────────────
+
+def test_cuisine_stored_and_returned(client):
+    meal = create_meal(client, "Carbonara", cuisine="Italian")
+    assert meal["cuisine"] == "Italian"
+    fetched = client.get(f"/api/meals/{meal['id']}").json()
+    assert fetched["cuisine"] == "Italian"
+
+
+def test_cuisine_default_empty_string(client):
+    meal = create_meal(client, "Plain Chicken")
+    assert meal["cuisine"] == ""
+
+
+def test_update_meal_cuisine(client):
+    meal = create_meal(client, "Tacos")
+    r = client.put(f"/api/meals/{meal['id']}", json={**MEAL_DEFAULTS, "name": "Tacos", "cuisine": "Mexican"})
+    assert r.status_code == 200
+    assert r.json()["cuisine"] == "Mexican"

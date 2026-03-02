@@ -40,18 +40,15 @@ def test_ai_status_configured(client):
 
 
 def test_ai_status_missing_key(client):
-    env = {"AI_PROVIDER": "anthropic", "AI_API_KEY": ""}
-    with patch.dict(os.environ, env, clear=False):
-        # Ensure AI_API_KEY is actually empty
-        with patch("os.getenv", side_effect=lambda k, *d: "" if k == "AI_API_KEY" else os.environ.get(k, *d)):
-            r = client.get("/api/ai/status")
-    # Alternatively — simpler direct check of _check_configured:
-    from app.routers.ai import _check_configured
-    configured, reason = _check_configured("anthropic")
-    # With no key set in CI env, should be False
-    # (we just test the logic, not rely on env state)
-    assert isinstance(configured, bool)
-    assert reason is None or isinstance(reason, str)
+    """Status endpoint reports not-configured when AI_API_KEY is absent."""
+    with patch("app.routers.ai.os.getenv", side_effect=lambda k, *d: "anthropic" if k == "AI_PROVIDER" else ""):
+        r = client.get("/api/ai/status")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["configured"] is False
+    assert data["provider"] == "anthropic"
+    assert data["reason"] is not None
+    assert "AI_API_KEY" in data["reason"]
 
 
 def test_ai_status_disabled(client):
@@ -262,3 +259,48 @@ def test_generate_marks_plan_as_ai_generated(client, meals):
 
     updated = client.get(f"/api/plans/{plan['id']}").json()
     assert updated["ai_generated"] is True
+
+
+def test_generate_creates_plan_when_no_existing_plan_id(client, meals):
+    """Omitting existing_plan_id causes generate to create the plan automatically."""
+    current = client.get("/api/plans/current").json()
+    from datetime import timedelta
+    next_sunday = (date.fromisoformat(current["week_start"]) + timedelta(weeks=2)).isoformat()
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={"week_start": next_sunday})
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["plan_id"] is not None
+    assert len(data["suggestions"]) == 7
+
+
+# ── Prompt mode ───────────────────────────────────────────────────────────────
+
+def test_build_prompt_mix_mode_favours_less_used():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        mode="mix",
+    )
+    assert "Mix It Up" in prompt
+    assert "4×" in prompt
+
+
+def test_build_prompt_safe_mode_favours_favourites():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        mode="safe",
+    )
+    assert "Play It Safe" in prompt
+    assert "3×" in prompt

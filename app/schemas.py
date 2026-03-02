@@ -16,6 +16,7 @@ class MealBase(BaseModel):
     easy_to_make: bool = False
     shared_ingredients: str = ""
     protein: str = ""  # e.g. "Chicken", "Beef", "Tofu" — selected from a preset list
+    cuisine: str = ""  # e.g. "Italian", "Mexican" — selected from a preset list
 
 
 class MealCreate(MealBase):
@@ -63,7 +64,7 @@ class PlanDayOut(BaseModel):
 # ── Weekly Plans ──────────────────────────────────────────────────────────────
 
 class WeeklyPlanCreate(BaseModel):
-    week_start: date  # must be a Monday
+    week_start: date  # must be a Sunday
 
 
 class WeeklyPlanOut(BaseModel):
@@ -71,6 +72,7 @@ class WeeklyPlanOut(BaseModel):
     week_start: date
     status: PlanStatus
     ai_generated: bool
+    notes: str = ""
     created_at: datetime
     days: list[PlanDayOut] = []
 
@@ -82,9 +84,14 @@ class WeeklyPlanSummary(BaseModel):
     week_start: date
     status: PlanStatus
     ai_generated: bool
+    notes: str = ""
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class WeeklyPlanNotesUpdate(BaseModel):
+    notes: str
 
 
 # ── AI ────────────────────────────────────────────────────────────────────────

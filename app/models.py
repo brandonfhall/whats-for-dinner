@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Integer, String, Boolean, Date, DateTime, ForeignKey, Enum as SAEnum
 )
@@ -38,8 +38,9 @@ class Meal(Base):
     easy_to_make: Mapped[bool] = mapped_column(Boolean, default=False)
     shared_ingredients: Mapped[str] = mapped_column(String, default="")
     protein: Mapped[str] = mapped_column(String, default="")
+    cuisine: Mapped[str] = mapped_column(String, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     plan_days: Mapped[list["PlanDay"]] = relationship("PlanDay", back_populates="meal")
 
@@ -51,7 +52,8 @@ class WeeklyPlan(Base):
     week_start: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
     status: Mapped[PlanStatus] = mapped_column(SAEnum(PlanStatus), default=PlanStatus.draft)
     ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    notes: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     days: Mapped[list["PlanDay"]] = relationship(
         "PlanDay", back_populates="plan", order_by="PlanDay.day_of_week"

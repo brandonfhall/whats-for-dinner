@@ -53,6 +53,7 @@ def _get_meal_library(db: Session) -> list[dict]:
             "easy_to_make": m.easy_to_make,
             "shared_ingredients": m.shared_ingredients,
             "protein": m.protein,
+            "cuisine": m.cuisine,
             "usage_count": count_map.get(m.id, 0),
         }
         for m in meals
@@ -134,8 +135,9 @@ INSTRUCTIONS:
 3. For gym nights, strongly prefer meals where easy_to_make is true. Set day_type to "home_cooked".
 4. For all other nights, pick from the meal library applying the selection style above.
 5. Try to vary the protein across the week — avoid scheduling the same protein on back-to-back nights when alternatives exist.
-6. When two consecutive home-cooked nights share ingredients, note it in the notes field.
-7. If a meal has has_leftovers=true, you may note that in the next day's notes.
+6. Try to vary the cuisine across the week — avoid back-to-back nights with the same cuisine when alternatives exist.
+7. When two consecutive home-cooked nights share ingredients, note it in the notes field.
+8. If a meal has has_leftovers=true, you may note that in the next day's notes.
 
 Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 7 objects in this format:
 [

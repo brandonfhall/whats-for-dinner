@@ -318,3 +318,101 @@ def test_delete_plan(client):
 def test_delete_plan_not_found_returns_404(client):
     r = client.delete("/api/plans/99999")
     assert r.status_code == 404
+
+
+# ── List plans ────────────────────────────────────────────────────────────────
+
+def test_list_plans_returns_all_plans(client):
+    """GET /api/plans lists every plan, newest first."""
+    client.get("/api/plans/current")
+    current = client.get("/api/plans/current").json()
+    next_sunday = date.fromisoformat(current["week_start"]) + timedelta(weeks=1)
+    client.get(f"/api/plans/week/{next_sunday.isoformat()}")
+
+    plans = client.get("/api/plans").json()
+    assert len(plans) >= 2
+    week_starts = [p["week_start"] for p in plans]
+    assert week_starts == sorted(week_starts, reverse=True)
+
+
+def test_list_plans_summary_fields(client):
+    """List response includes summary fields but not the full days array."""
+    client.get("/api/plans/current")
+    plans = client.get("/api/plans").json()
+    assert len(plans) >= 1
+    plan = plans[0]
+    assert "id" in plan
+    assert "week_start" in plan
+    assert "status" in plan
+    assert "ai_generated" in plan
+    assert "days" not in plan  # summary only
+
+
+# ── Update plan status ────────────────────────────────────────────────────────
+
+def test_update_plan_status_to_active(client):
+    plan = client.get("/api/plans/current").json()
+    assert plan["status"] == "draft"
+    r = client.put(f"/api/plans/{plan['id']}/status", params={"status": "active"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "active"
+
+
+def test_update_plan_status_to_complete(client):
+    plan = client.get("/api/plans/current").json()
+    r = client.put(f"/api/plans/{plan['id']}/status", params={"status": "complete"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "complete"
+
+
+def test_update_plan_status_not_found_returns_404(client):
+    r = client.put("/api/plans/99999/status", params={"status": "active"})
+    assert r.status_code == 404
+
+
+# ── Carry-forward edge case ───────────────────────────────────────────────────
+
+def test_carry_forward_does_not_overwrite_already_set_days(client, meals):
+    """If the next week's day already has a meal set, carry-forward must not replace it."""
+    plan = client.get("/api/plans/current").json()
+    week_start = plan["week_start"]
+
+    # Pin Saturday (day 6) in the current week
+    client.put(f"/api/plans/{plan['id']}/days/6", json={
+        "day_type": "home_cooked", "meal_id": meals[0]["id"],
+        "custom_name": "", "notes": "", "carry_forward": True,
+    })
+
+    # Create next week and explicitly set Saturday to a different meal
+    next_sunday = date.fromisoformat(week_start) + timedelta(weeks=1)
+    next_plan = client.get(f"/api/plans/week/{next_sunday.isoformat()}").json()
+    client.put(f"/api/plans/{next_plan['id']}/days/6", json={
+        "day_type": "home_cooked", "meal_id": meals[1]["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    # Re-fetch — Saturday should keep the explicitly set meal, not the carried one
+    refreshed = client.get(f"/api/plans/{next_plan['id']}").json()
+    saturday = next(d for d in refreshed["days"] if d["day_of_week"] == 6)
+    assert saturday["meal_id"] == meals[1]["id"]
+
+
+# ── Plan notes ────────────────────────────────────────────────────────────────
+
+def test_update_plan_notes(client):
+    plan = client.get("/api/plans/current").json()
+    r = client.put(f"/api/plans/{plan['id']}/notes", json={"notes": "Guests on Thursday"})
+    assert r.status_code == 200
+    assert r.json()["notes"] == "Guests on Thursday"
+
+
+def test_notes_persist_across_requests(client):
+    plan = client.get("/api/plans/current").json()
+    client.put(f"/api/plans/{plan['id']}/notes", json={"notes": "Low-effort week"})
+    fetched = client.get(f"/api/plans/{plan['id']}").json()
+    assert fetched["notes"] == "Low-effort week"
+
+
+def test_update_plan_notes_not_found(client):
+    r = client.put("/api/plans/99999/notes", json={"notes": "Ghost plan"})
+    assert r.status_code == 404

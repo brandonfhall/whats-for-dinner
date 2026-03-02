@@ -1,5 +1,11 @@
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const CUISINES = [
+  'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean',
+  'American', 'Thai', 'Japanese', 'Chinese', 'Greek',
+  'Middle Eastern', 'French',
+];
+
 const PROTEINS = [
   { value: 'Chicken',    emoji: '🍗', group: 'meat' },
   { value: 'Beef',       emoji: '🥩', group: 'meat' },
@@ -39,6 +45,10 @@ function app() {
     meals: [],
     settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic' },
 
+    // ── Week notes ──────────────────────────────────────────
+    weekNotes: '',
+    weekNotesSaved: false,
+
     // ── AI ───────────────────────────────────────────────────
     aiLoading: false,
     aiError: null,
@@ -68,6 +78,7 @@ function app() {
     mealSearch: '',
     mealSaving: false,
     proteins: PROTEINS,
+    cuisines: CUISINES,
 
     // ── History ─────────────────────────────────────────────
     expandedPlan: null,
@@ -101,10 +112,12 @@ function app() {
     async loadCurrentPlan() {
       this.currentPlan = await this.api('GET', '/plans/current');
       this.thisWeekStart = this.currentPlan?.week_start ?? null;
+      this.weekNotes = this.currentPlan?.notes ?? '';
     },
 
     async goToWeek(weekStart) {
       this.currentPlan = await this.api('GET', `/plans/week/${weekStart}`);
+      this.weekNotes = this.currentPlan?.notes ?? '';
     },
 
     async prevWeek() {
@@ -319,7 +332,7 @@ function app() {
       this.editingMeal = meal;
       this.mealForm = meal
         ? { ...meal }
-        : { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '' };
+        : { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '' };
       this.mealEditorOpen = true;
     },
 
@@ -354,6 +367,17 @@ function app() {
       } catch (e) {
         alert('Failed to delete: ' + e.message);
       }
+    },
+
+    // ── Week notes ───────────────────────────────────────────
+    async saveWeekNotes() {
+      if (!this.currentPlan) return;
+      try {
+        await this.api('PUT', `/plans/${this.currentPlan.id}/notes`, { notes: this.weekNotes });
+        this.currentPlan.notes = this.weekNotes;
+        this.weekNotesSaved = true;
+        setTimeout(() => { this.weekNotesSaved = false; }, 2000);
+      } catch { /* silent — notes are low priority */ }
     },
 
     // ── AI ───────────────────────────────────────────────────

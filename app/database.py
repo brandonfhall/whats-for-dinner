@@ -33,6 +33,14 @@ def _run_migrations():
             conn.execute(text("ALTER TABLE plan_days ADD COLUMN carry_forward INTEGER DEFAULT 0"))
             conn.commit()
 
+        if "cuisine" not in meal_cols:
+            conn.execute(text("ALTER TABLE meals ADD COLUMN cuisine TEXT DEFAULT ''"))
+            conn.commit()
+
+        plan_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(weekly_plans)"))}
+        if "notes" not in plan_cols:
+            conn.execute(text("ALTER TABLE weekly_plans ADD COLUMN notes TEXT DEFAULT ''"))
+            conn.commit()
 
 
 def init_db():

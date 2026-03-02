@@ -182,6 +182,21 @@
       </div>
 
       <div x-show="!currentPlan" class="text-center py-16 text-gray-400">Loading plan…</div>
+
+      <!-- Week notes -->
+      <div x-show="currentPlan" class="mt-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Week notes</label>
+          <textarea
+            x-model="weekNotes"
+            @blur="saveWeekNotes()"
+            rows="2"
+            placeholder="Anything to remember this week…"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"
+          ></textarea>
+          <p x-show="weekNotesSaved" class="text-xs text-green-600 mt-1">✓ Saved</p>
+        </div>
+      </div>
     </div>
 
     <!-- ── Meal Library ───────────────────────────────────────── -->
@@ -213,6 +228,7 @@
                 <p class="font-semibold text-gray-800 truncate" x-text="meal.name"></p>
                 <div class="flex flex-wrap gap-1 mt-1.5">
                   <span class="text-xs rounded px-1.5 py-0.5" :class="mealTypeClass(meal.meal_type)" x-text="mealTypeLabel(meal.meal_type)"></span>
+                  <span x-show="meal.cuisine" class="text-xs bg-orange-100 text-orange-700 rounded px-1.5 py-0.5" x-text="meal.cuisine"></span>
                   <span x-show="meal.protein" class="text-xs rounded px-1.5 py-0.5" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
                   <span x-show="meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
                   <span x-show="meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
@@ -419,6 +435,7 @@ AI_API_KEY=sk-ant-...</pre>
                     <span x-show="meal.protein" class="text-xs" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
                     <span x-show="meal.easy_to_make" class="text-xs text-yellow-600">⚡ easy</span>
                     <span x-show="meal.has_leftovers" class="text-xs text-blue-600">📦 leftovers</span>
+                    <span x-show="meal.cuisine" class="text-xs text-orange-600" x-text="meal.cuisine"></span>
                   </div>
                 </div>
                 <span x-show="editDayForm.meal_id === meal.id" class="text-green-500 text-sm">✓</span>
@@ -573,6 +590,16 @@ AI_API_KEY=sk-ant-...</pre>
                 class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
                 x-text="p.emoji + ' ' + p.value"
               ></button>
+            </template>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Cuisine</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button @click="mealForm.cuisine = ''" :class="mealForm.cuisine === '' ? 'bg-gray-200 text-gray-700 ring-1 ring-gray-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'" class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors">None</button>
+            <template x-for="c in cuisines" :key="c">
+              <button @click="mealForm.cuisine = c" :class="mealForm.cuisine === c ? 'bg-orange-100 text-orange-800 ring-1 ring-orange-400' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'" class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors" x-text="c"></button>
             </template>
           </div>
         </div>
