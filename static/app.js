@@ -127,6 +127,13 @@ function app() {
       await this.goToWeek(this.thisWeekStart);
     },
 
+    async switchTab(id) {
+      this.activeTab = id;
+      // Lazily refresh stale data when the user navigates to a tab
+      if (id === 'library') this.loadMeals();
+      if (id === 'history') this.loadPastPlans();
+    },
+
     async clearWeek() {
       if (!this.currentPlan) return;
       this.clearingWeek = true;
@@ -134,6 +141,7 @@ function app() {
         const weekStart = this.currentPlan.week_start;
         await this.api('DELETE', `/plans/${this.currentPlan.id}`);
         this.currentPlan = await this.api('GET', `/plans/week/${weekStart}`);
+        this.loadMeals(); // refresh times_used counts
       } finally {
         this.clearingWeek = false;
         this.confirmClearOpen = false;
@@ -298,6 +306,7 @@ function app() {
           this.currentPlan.days.push(updated);
         }
         this.dayEditorOpen = false;
+        this.loadMeals(); // refresh times_used counts
       } catch (e) {
         alert('Failed to save: ' + e.message);
       } finally {

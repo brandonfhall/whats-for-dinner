@@ -33,7 +33,7 @@
       <div class="flex gap-1">
         <template x-for="tab in tabs" :key="tab.id">
           <button
-            @click="activeTab = tab.id"
+            @click="switchTab(tab.id)"
             :class="activeTab === tab.id
               ? 'bg-brand text-white'
               : 'text-gray-600 hover:bg-gray-100'"
@@ -64,44 +64,59 @@
           <button @click="nextWeek()" :disabled="!currentPlan" class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition-colors" title="Next week">▶</button>
         </div>
         <div class="flex flex-wrap gap-2">
-          <!-- AI: two mode buttons when configured, status button otherwise -->
-          <template x-if="aiConfigured && !aiLoading">
-            <div class="flex gap-1.5">
+          <!-- AI button with dropdown -->
+          <div x-data="{ aiOpen: false }" class="relative" @click.away="aiOpen = false">
+            <button
+              @click="aiConfigured && !aiLoading ? (aiOpen = !aiOpen) : (activeTab = 'settings')"
+              :disabled="aiLoading || !currentPlan || aiProvider === 'none'"
+              :class="aiConfigured ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'"
+              class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <span x-show="aiLoading">Thinking…</span>
+              <span x-show="!aiLoading && aiConfigured" class="flex items-center gap-1">
+                <span>✨</span>
+                <span class="sm:hidden">AI</span>
+                <span class="hidden sm:inline">Suggest with AI</span>
+                <span class="text-xs opacity-60 ml-0.5">▾</span>
+              </span>
+              <span x-show="!aiLoading && !aiConfigured && aiProvider === 'none'">✨ AI off</span>
+              <span x-show="!aiLoading && !aiConfigured && aiProvider !== 'none'">✨ AI setup</span>
+            </button>
+            <!-- Dropdown menu -->
+            <div
+              x-show="aiOpen"
+              x-transition:enter="transition ease-out duration-100"
+              x-transition:enter-start="opacity-0 scale-95"
+              x-transition:enter-end="opacity-100 scale-100"
+              x-transition:leave="transition ease-in duration-75"
+              x-transition:leave-start="opacity-100 scale-100"
+              x-transition:leave-end="opacity-0 scale-95"
+              class="absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden origin-top-right"
+            >
               <button
-                @click="generateAI('mix')"
+                @click="generateAI('mix'); aiOpen = false"
                 :disabled="!currentPlan"
-                title="Favour meals you haven't had in a while"
-                class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 border-b border-gray-100 transition-colors"
               >
-                <span>🎲</span>
-                <span class="sm:hidden">Mix</span>
-                <span class="hidden sm:inline">Mix it up</span>
+                <span class="text-lg">🎲</span>
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Mix it up</p>
+                  <p class="text-xs text-gray-400">Favour less-used meals</p>
+                </div>
               </button>
               <button
-                @click="generateAI('safe')"
+                @click="generateAI('safe'); aiOpen = false"
                 :disabled="!currentPlan"
-                title="Favour your most-used favourites"
-                class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-violet-500 text-white hover:bg-violet-600 disabled:opacity-50 transition-colors"
+                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 transition-colors"
               >
-                <span>🛡️</span>
-                <span class="sm:hidden">Safe</span>
-                <span class="hidden sm:inline">Play it safe</span>
+                <span class="text-lg">🛡️</span>
+                <div>
+                  <p class="text-sm font-medium text-gray-800">Play it safe</p>
+                  <p class="text-xs text-gray-400">Favour your favourites</p>
+                </div>
               </button>
             </div>
-          </template>
-          <template x-if="aiLoading">
-            <button disabled class="px-3 py-2 rounded-lg text-sm font-medium bg-violet-600 text-white opacity-70">Thinking…</button>
-          </template>
-          <template x-if="!aiConfigured && !aiLoading">
-            <button
-              @click="activeTab = 'settings'"
-              :title="aiProvider === 'none' ? 'AI is disabled' : 'AI not configured — click to set up'"
-              class="px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
-            >
-              <span x-show="aiProvider === 'none'">✨ AI off</span>
-              <span x-show="aiProvider !== 'none'">✨ AI setup</span>
-            </button>
-          </template>
+          </div>
           <button
             @click="confirmClearOpen = true"
             :disabled="!currentPlan"
