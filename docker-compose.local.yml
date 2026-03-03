@@ -1,9 +1,11 @@
 services:
   whats-for-dinner:
-    image: brandonh317/whats-for-dinner:latest
+    build: .
     restart: unless-stopped
     volumes:
       - dinner-data:/app/data
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     labels:
