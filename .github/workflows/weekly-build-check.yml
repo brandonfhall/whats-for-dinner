@@ -29,6 +29,8 @@ jobs:
         pip install flake8
         # Install LATEST runtime dependencies to catch upstream breakage
         pip install --upgrade fastapi "uvicorn[standard]" sqlalchemy pydantic anthropic openai python-dotenv
+        # Test deps are installed as-is (pytest, httpx, etc. — not the thing being stress-tested)
+        pip install -r requirements-test.txt
 
     - name: Lint with flake8
       run: |
@@ -37,15 +39,22 @@ jobs:
         # Treat style issues as warnings only
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    # Step 2: Unpin requirements.txt so the Docker build also uses latest versions
+    # Step 2: Run test suite against the latest unpinned dependencies
+    - name: Run Tests
+      env:
+        AI_API_KEY: ""
+        AI_PROVIDER: "none"
+      run: pytest -v
+
+    # Step 3: Unpin requirements.txt so the Docker build also uses latest versions
     - name: Unpin requirements for Docker build
       run: sed -i 's/==.*//' requirements.txt
 
-    # Step 3: Verify the Docker container actually builds
+    # Step 4: Verify the Docker container actually builds
     - name: Build Docker Image
       run: docker build . --file Dockerfile --tag app-test:latest
 
-    # Step 4: Smoke test — verify the app can actually load
+    # Step 5: Smoke test — verify the app can actually load
     - name: Test Container Startup
       run: |
         docker run --rm \
@@ -54,7 +63,7 @@ jobs:
           app-test:latest \
           python -c "from app.main import app; print('Container environment is valid')"
 
-    # Step 5: Report versions if all checks passed
+    # Step 6: Report versions if all checks passed
     - name: Show Installed Versions
       run: |
         echo "All checks passed with the following package versions:"
