@@ -25,7 +25,7 @@ Designed for home networks — no auth, no cloud, no fuss.
 ```yaml
 services:
   whats-for-dinner:
-    image: yourusername/whats-for-dinner:latest
+    image: brandonh317/whats-for-dinner:latest
     restart: unless-stopped
     volumes:
       - dinner-data:/app/data
@@ -46,7 +46,7 @@ volumes:
 ```yaml
 services:
   whats-for-dinner:
-    image: yourusername/whats-for-dinner:latest
+    image: brandonh317/whats-for-dinner:latest
     restart: unless-stopped
     volumes:
       - dinner-data:/app/data
