@@ -1,0 +1,61 @@
+name: Weekly Container Build Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Runs at 08:00 UTC every Sunday
+    - cron: '0 8 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Step 1: Syntax check against latest package versions
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install latest dependencies (unpinned)
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+        # Install LATEST runtime dependencies to catch upstream breakage
+        pip install --upgrade fastapi "uvicorn[standard]" sqlalchemy pydantic anthropic openai python-dotenv
+
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Treat style issues as warnings only
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    # Step 2: Unpin requirements.txt so the Docker build also uses latest versions
+    - name: Unpin requirements for Docker build
+      run: sed -i 's/==.*//' requirements.txt
+
+    # Step 3: Verify the Docker container actually builds
+    - name: Build Docker Image
+      run: docker build . --file Dockerfile --tag app-test:latest
+
+    # Step 4: Smoke test — verify the app can actually load
+    - name: Test Container Startup
+      run: |
+        docker run --rm \
+          -e AI_API_KEY="" \
+          -e AI_PROVIDER="none" \
+          app-test:latest \
+          python -c "from app.main import app; print('Container environment is valid')"
+
+    # Step 5: Report versions if all checks passed
+    - name: Show Installed Versions
+      run: |
+        echo "All checks passed with the following package versions:"
+        pip freeze
