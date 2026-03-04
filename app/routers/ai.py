@@ -1,9 +1,13 @@
 import json
+import logging
 import os
+import time
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus
@@ -218,7 +222,8 @@ def _apply_suggestions(
 
         meal_id = s.get("meal_id")
         if meal_id and int(meal_id) not in meal_ids:
-            meal_id = None  # AI hallucinated an ID
+            logger.warning("AI hallucinated meal_id=%s (%s) — ignored", meal_id, s.get("meal_name", "?"))
+            meal_id = None
 
         day = db.query(PlanDay).filter(
             PlanDay.plan_id == plan_id, PlanDay.day_of_week == dow
@@ -269,13 +274,20 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="AI is disabled (AI_PROVIDER=none).")
         raise HTTPException(status_code=503, detail=reason)
 
+    logger.info(
+        "AI generate | provider=%s mode=%s week=%s meals=%d",
+        provider, payload.mode, payload.week_start, len(library),
+    )
+    t0 = time.perf_counter()
     try:
         if provider == "openai":
             raw_suggestions = _call_openai(prompt)
         else:
             raw_suggestions = _call_anthropic(prompt)
     except Exception as exc:
+        logger.error("AI generate failed | provider=%s error=%s", provider, exc)
         raise HTTPException(status_code=500, detail=f"AI request failed: {exc}") from exc
+    logger.info("AI generate complete | %.1fs suggestions=%d", time.perf_counter() - t0, len(raw_suggestions))
 
     # get or create the plan
     from app.routers.plans import _sunday_of, _build_plan_days, _load_plan

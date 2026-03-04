@@ -1,3 +1,4 @@
+import logging
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
@@ -8,6 +9,7 @@ from app.schemas import WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, Week
 from app.routers.settings import get_all_settings
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
+logger = logging.getLogger(__name__)
 
 DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -79,6 +81,7 @@ def _get_or_create_plan(sunday: date, db: Session) -> WeeklyPlan:
     _apply_carry_forward(days, sunday, db)
     db.add_all(days)
     db.commit()
+    logger.info("Plan created | week=%s", sunday.isoformat())
     return _load_plan(plan.id, db)
 
 
@@ -144,6 +147,8 @@ def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Dep
     db.refresh(day)
     if day.meal_id:
         day = db.query(PlanDay).options(joinedload(PlanDay.meal)).filter(PlanDay.id == day.id).first()
+    detail = (day.meal.name if day.meal else day.custom_name) or day.day_type.value
+    logger.info("Plan day updated | plan=%d %s → %s (%s)", plan_id, DAY_NAMES[dow], detail, day.day_type.value)
     return day
 
 
@@ -166,6 +171,7 @@ def update_plan_status(plan_id: int, status: PlanStatus, db: Session = Depends(g
     plan.status = status
     db.commit()
     db.refresh(plan)
+    logger.info("Plan status changed | plan=%d → %s", plan_id, status.value)
     return plan
 
 

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -7,6 +9,7 @@ from app.models import Meal, PlanDay
 from app.schemas import MealCreate, MealOut, MealUpdate
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
+logger = logging.getLogger(__name__)
 
 
 def _usage_counts(db: Session) -> dict[int, int]:
@@ -42,6 +45,7 @@ def create_meal(payload: MealCreate, db: Session = Depends(get_db)):
     db.add(meal)
     db.commit()
     db.refresh(meal)
+    logger.info("Meal created | %r (%s)", meal.name, meal.meal_type.value)
     return meal
 
 
@@ -63,6 +67,7 @@ def update_meal(meal_id: int, payload: MealUpdate, db: Session = Depends(get_db)
         setattr(meal, field, value)
     db.commit()
     db.refresh(meal)
+    logger.info("Meal updated | %r", meal.name)
     return meal
 
 
@@ -71,5 +76,6 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)):
     meal = db.query(Meal).filter(Meal.id == meal_id).first()
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
+    logger.info("Meal deactivated | %r", meal.name)
     meal.active = False
     db.commit()

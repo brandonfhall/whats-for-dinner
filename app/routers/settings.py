@@ -1,4 +1,6 @@
 import json
+import logging
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,7 @@ from app.models import Setting
 from app.schemas import SettingsOut, SettingsUpdate
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+logger = logging.getLogger(__name__)
 
 DEFAULTS = {
     "gym_days": [],
@@ -42,4 +45,5 @@ def update_settings(payload: SettingsUpdate, db: Session = Depends(get_db)):
     updates = payload.model_dump(exclude_none=True)
     for key, value in updates.items():
         set_setting(db, key, value)
+    logger.info("Settings updated | %s", ", ".join(f"{k}={v}" for k, v in updates.items()))
     return get_all_settings(db)
