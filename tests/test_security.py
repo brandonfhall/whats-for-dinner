@@ -1,5 +1,6 @@
-"""Tests for CORS and subnet restriction middleware."""
+"""Tests for CORS, subnet restriction, and access-log middleware."""
 
+import logging
 from unittest.mock import patch
 
 
@@ -39,3 +40,37 @@ def test_subnet_fallback_to_x_forwarded_for(client):
             headers={"X-Forwarded-For": "10.5.5.5, 1.2.3.4"},
         )
     assert r.status_code == 200
+
+
+# ── AccessLogMiddleware ───────────────────────────────────────────────────────
+
+def test_access_log_records_successful_request(client):
+    """AccessLogMiddleware calls log() at INFO level for successful API requests."""
+    with patch("app.main._access_log") as mock_log:
+        r = client.get("/api/settings")
+    assert r.status_code == 200
+    mock_log.log.assert_called_once()
+    level, fmt, _ip, method, path, status, _ms = mock_log.log.call_args[0]
+    assert level == logging.INFO
+    assert method == "GET"
+    assert path == "/api/settings"
+    assert status == 200
+
+
+def test_access_log_warns_on_4xx(client):
+    """AccessLogMiddleware logs at WARNING level when the response is 4xx."""
+    with patch("app.main._access_log") as mock_log:
+        with patch.dict("os.environ", {"ALLOWED_SUBNETS": "192.168.1.0/24"}):
+            r = client.get("/api/settings", headers={"X-Real-IP": "10.0.0.1"})
+    assert r.status_code == 403
+    mock_log.log.assert_called_once()
+    level, _fmt, _ip, _method, _path, status, _ms = mock_log.log.call_args[0]
+    assert level == logging.WARNING
+    assert status == 403
+
+
+def test_access_log_skips_static_paths(client):
+    """AccessLogMiddleware does not log requests to /static/."""
+    with patch("app.main._access_log") as mock_log:
+        client.get("/static/app.js")
+    mock_log.log.assert_not_called()

@@ -15,7 +15,7 @@ Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 - **Gym nights** — configure which nights you go to the gym; AI will prefer easy-to-make meals on those nights
 - **📌 Carry-forward** — pin any day so its meal copies to the same day next week automatically
 - **Past weeks** — browse previous plans to jog your memory
-- **No build step** — frontend is plain HTML + Alpine.js + Tailwind via CDN
+- **Offline-capable** — Alpine.js and Tailwind CSS are vendored into the Docker image at build time; no CDN or internet access required at runtime
 
 ---
 
@@ -131,7 +131,7 @@ You can also configure default eat-out nights, which are pre-set to "Eating out"
 |---|---|
 | Backend | Python 3.12 + FastAPI |
 | Database | SQLite (file in a named Docker volume) |
-| Frontend | Alpine.js + Tailwind CSS (CDN, no build step) |
+| Frontend | Alpine.js + Tailwind CSS (compiled at image build time via Tailwind CLI) |
 | AI | Anthropic Claude `claude-sonnet-4-6` or OpenAI `gpt-4o` |
 | Container | Single Docker image, docker-compose |
 
@@ -142,7 +142,7 @@ You can also configure default eat-out nights, which are pre-set to "Eating out"
 ```
 whats-for-dinner/
 ├── app/
-│   ├── main.py           # FastAPI app, static file mount
+│   ├── main.py           # FastAPI app, middleware, access log
 │   ├── database.py       # SQLAlchemy + SQLite setup
 │   ├── models.py         # ORM models (Meal, WeeklyPlan, PlanDay, Setting)
 │   ├── schemas.py        # Pydantic request/response schemas
@@ -153,11 +153,16 @@ whats-for-dinner/
 │       └── settings.py   # Key-value settings store
 ├── static/
 │   ├── index.html        # SPA shell
-│   └── app.js            # All Alpine.js frontend logic
+│   ├── app.js            # All Alpine.js frontend logic
+│   └── css/
+│       └── input.css     # Tailwind directives (source — output is generated at build time)
+├── tests/                # pytest suite (~93 tests, in-memory SQLite)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
+├── package.json          # Node deps for the Tailwind build stage (not in final image)
+├── tailwind.config.js    # Tailwind theme (brand colour) + content paths + safelist
 ├── .env.example
 ├── docker-compose.yml
-└── Dockerfile
+└── Dockerfile            # Multi-stage: Node builds CSS → Python serves everything
 ```
 
 ---
@@ -188,7 +193,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 90 tests covering the meals, plans, settings, AI endpoints, and security middleware. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 93 tests covering the meals, plans, settings, AI endpoints, and security/access-log middleware. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

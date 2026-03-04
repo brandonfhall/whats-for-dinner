@@ -14,7 +14,7 @@ Designed for home networks — no auth, no cloud, no fuss.
 - **Gym nights** — AI prefers easy meals on nights you configure as gym nights
 - **📌 Carry-forward** — pin a day so its meal copies to the same day next week automatically
 - **Week notes** — free-text memo per week (guests, themes, etc.)
-- **No build step** — plain HTML + Alpine.js + Tailwind CSS via CDN
+- **Offline-capable** — Alpine.js and Tailwind CSS vendored into the image; no CDN or internet access required at runtime
 
 ---
 
