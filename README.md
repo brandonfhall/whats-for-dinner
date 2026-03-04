@@ -156,7 +156,8 @@ whats-for-dinner/
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
 │       └── input.css     # Tailwind directives (source — output is generated at build time)
-├── tests/                # pytest suite (~93 tests, in-memory SQLite)
+├── tests/                # pytest suite (98 tests, in-memory SQLite)
+│   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
 ├── package.json          # Node deps for the Tailwind build stage (not in final image)
 ├── tailwind.config.js    # Tailwind theme (brand colour) + content paths + safelist
@@ -193,7 +194,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 93 tests covering the meals, plans, settings, AI endpoints, and security/access-log middleware. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 98 tests covering the meals, plans, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 
@@ -214,7 +215,12 @@ pytest --cov=app --cov-report=term-missing
 
 ### CI
 
-Tests run automatically on every push and pull request to `main` via GitHub Actions (see [.github/workflows/test.yml](.github/workflows/test.yml)). No API keys are required — all AI calls are mocked.
+On every push and pull request to `main`, GitHub Actions runs two jobs (see [.github/workflows/test.yml](.github/workflows/test.yml)):
+
+- **test** — runs the full pytest suite; no API keys required (all AI calls are mocked)
+- **docker** — builds the Docker image and verifies that `tailwind.css` and `alpine.min.js` were compiled into the image correctly
+
+The weekly build check ([.github/workflows/weekly-build-check.yml](.github/workflows/weekly-build-check.yml)) runs the same Docker build against the latest unpinned dependencies to catch upstream breakage early. The publish workflow ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) also verifies frontend assets before pushing to Docker Hub.
 
 ---
 
