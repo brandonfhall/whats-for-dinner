@@ -131,7 +131,7 @@ You can also configure default eat-out nights, which are pre-set to "Eating out"
 |---|---|
 | Backend | Python 3.12 + FastAPI |
 | Database | SQLite (file in a named Docker volume) |
-| Frontend | Alpine.js + Tailwind CSS (compiled at image build time via Tailwind CLI) |
+| Frontend | Alpine.js + Tailwind CSS v4 (compiled at image build time via `@tailwindcss/cli`, node:22-slim build stage) |
 | AI | Anthropic Claude `claude-sonnet-4-6` or OpenAI `gpt-4o` |
 | Container | Single Docker image, docker-compose |
 
@@ -155,12 +155,11 @@ whats-for-dinner/
 │   ├── index.html        # SPA shell
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
-│       └── input.css     # Tailwind directives (source — output is generated at build time)
+│       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
 ├── tests/                # pytest suite (98 tests, in-memory SQLite)
 │   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
-├── package.json          # Node deps for the Tailwind build stage (not in final image)
-├── tailwind.config.js    # Tailwind theme (brand colour) + content paths + safelist
+├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
 ├── .env.example
 ├── docker-compose.yml
 └── Dockerfile            # Multi-stage: Node builds CSS → Python serves everything
