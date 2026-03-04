@@ -1,0 +1,10 @@
+{
+  "name": "whats-for-dinner",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.0"
+  }
+}
