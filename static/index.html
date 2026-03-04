@@ -4,19 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>What's For Dinner?</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { DEFAULT: '#f97316', light: '#fed7aa', dark: '#c2410c' }
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <script defer src="/static/vendor/alpine.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
     .day-card { transition: box-shadow 0.15s, transform 0.15s; }

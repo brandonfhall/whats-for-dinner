@@ -10,3 +10,8 @@ __pycache__/
 htmlcov/
 .claude/
 .vscode/
+
+# Frontend build outputs — generated at Docker build time, not committed
+node_modules/
+static/css/tailwind.css
+static/vendor/
