@@ -1,5 +1,5 @@
 # ── Stage 1: build Tailwind CSS + vendor Alpine.js ────────────────────────────
-FROM node:20-slim AS frontend
+FROM node:22-slim AS frontend
 
 WORKDIR /build
 
