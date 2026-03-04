@@ -120,4 +120,4 @@ docker run --rm -v dinner-data:/data -v $(pwd):/backup alpine \
 
 ## Source
 
-[github.com/bjpayne/whats-for-dinner](https://github.com/bjpayne/whats-for-dinner)
+[github.com/brandonfhall/whats-for-dinner](https://github.com/brandonfhall/whats-for-dinner)
