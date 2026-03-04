@@ -36,3 +36,19 @@ jobs:
           # AI keys are not available in CI — tests mock all AI calls
           AI_API_KEY: ""
           AI_PROVIDER: "none"
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build . --file Dockerfile --tag app-test:latest
+
+      - name: Verify frontend assets were compiled into image
+        run: |
+          docker run --rm app-test:latest sh -c "
+            test -s /app/static/css/tailwind.css && echo 'tailwind.css OK' &&
+            test -s /app/static/vendor/alpine.min.js && echo 'alpine.min.js OK'
+          "

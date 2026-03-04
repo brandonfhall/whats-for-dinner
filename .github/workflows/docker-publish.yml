@@ -49,6 +49,13 @@ jobs:
       - name: Build Docker Image (Smoke Test)
         run: docker build . --file Dockerfile --tag app-test:latest
 
+      - name: Verify frontend assets in built image
+        run: |
+          docker run --rm app-test:latest sh -c "
+            test -s /app/static/css/tailwind.css && echo 'tailwind.css OK' &&
+            test -s /app/static/vendor/alpine.min.js && echo 'alpine.min.js OK'
+          "
+
       - name: Test Container Startup (Smoke Test)
         run: |
           docker run --rm \
