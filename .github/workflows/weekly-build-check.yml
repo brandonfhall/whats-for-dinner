@@ -63,6 +63,15 @@ jobs:
           test -s /app/static/vendor/alpine.min.js && echo 'alpine.min.js OK'
         "
 
+    # Step 5b: Verify safelisted dynamic classes survived the Tailwind build
+    - name: Verify safelisted classes are present in compiled CSS
+      run: |
+        docker run --rm app-test:latest sh -c "
+          for cls in bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600; do
+            grep -q \"\$cls\" /app/static/css/tailwind.css && echo \"\$cls OK\" || { echo \"\$cls MISSING\"; exit 1; }
+          done
+        "
+
     # Step 6: Smoke test — verify the app can actually load
     - name: Test Container Startup
       run: |
