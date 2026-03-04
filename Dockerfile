@@ -9,7 +9,7 @@ RUN npm install
 COPY static/ ./static/
 
 # Compile Tailwind — scans static/ for class names, outputs a minified CSS file
-RUN npx tailwindcss -i ./static/css/input.css -o ./static/css/tailwind.css --minify
+RUN npx @tailwindcss/cli -i ./static/css/input.css -o ./static/css/tailwind.css --minify
 
 # Copy Alpine.js from node_modules so the final image needs no internet access
 RUN mkdir -p ./static/vendor && cp node_modules/alpinejs/dist/cdn.min.js ./static/vendor/alpine.min.js
