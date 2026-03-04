@@ -4,6 +4,8 @@ A self-hosted household meal planning webapp. Build a library of meals you actua
 
 Designed for home networks — no auth, no cloud, no fuss.
 
+![What's For Dinner weekly planner view](https://raw.githubusercontent.com/brandonfhall/whats-for-dinner/main/docs/image.png)
+
 ---
 
 ## Features
