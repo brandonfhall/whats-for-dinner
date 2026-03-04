@@ -13,7 +13,7 @@ COPY static/ ./static/
 RUN npx tailwindcss -i ./static/css/input.css -o ./static/css/tailwind.css --minify
 
 # Copy Alpine.js from node_modules so the final image needs no internet access
-RUN cp node_modules/alpinejs/dist/cdn.min.js ./static/vendor/alpine.min.js
+RUN mkdir -p ./static/vendor && cp node_modules/alpinejs/dist/cdn.min.js ./static/vendor/alpine.min.js
 
 
 # ── Stage 2: final Python image ────────────────────────────────────────────────
