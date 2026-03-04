@@ -4,6 +4,8 @@ A simple household meal planning webapp. Build a library of meals you actually l
 
 Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 
+![What's For Dinner weekly planner view](docs/image.png)
+
 ---
 
 ## Features
