@@ -1,3 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Scan source files for class names */
+@source "../**/*.{html,js}";
+
+/* Brand colour theme */
+@theme {
+  --color-brand: #f97316;
+  --color-brand-light: #fed7aa;
+  --color-brand-dark: #c2410c;
+}
+
+/* Force-include dynamically constructed classes.
+   index.html builds `bg-${opt.c}-600` and `border-${opt.c}-600` at runtime
+   where opt.c ∈ green | blue | gray — the scanner can't detect these statically. */
+@source inline("bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600");

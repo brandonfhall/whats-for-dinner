@@ -6,7 +6,6 @@ WORKDIR /build
 COPY package.json ./
 RUN npm install
 
-COPY tailwind.config.js ./
 COPY static/ ./static/
 
 # Compile Tailwind — scans static/ for class names, outputs a minified CSS file
