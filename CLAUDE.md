@@ -119,6 +119,22 @@ docker compose -f docker-compose.local.yml up --build
 | `static/app.js` | All frontend Alpine.js logic |
 | `static/index.html` | SPA HTML template |
 
+## CI/CD Pipelines
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `test.yml` | push/PR to `main` or `develop` | Runs pytest + Docker build/asset checks |
+| `codeql.yml` | push/PR to `main` or `develop` | CodeQL security scan (Python + Actions) |
+| `docker-publish.yml` | push to `main` or `develop`, version tags, monthly schedule | Builds multi-arch image and pushes to Docker Hub |
+| `weekly-build-check.yml` | weekly + PR to `main` | Tests against unpinned latest deps |
+
+**Docker Hub tagging:**
+- `main` → `latest` + `YYYYMMDD` date tag
+- `develop` → `develop` tag only
+- `v*.*.*` tags → version tag
+- DockerHub readme (`DOCKERHUB.md`) is only updated on `main` / version tags
+- Tag pruning only runs on `main` (keeps last 5, never deletes `latest` or `develop`)
+
 ## Adding New Features
 
 1. **Database changes**: Add columns to `app/models.py`, add migration in `app/database.py:_run_migrations()`, new tables auto-created by `create_all()`
@@ -130,4 +146,4 @@ docker compose -f docker-compose.local.yml up --build
 7. **Documentation**: Update `docs/ARCHITECTURE.md` (schema, endpoints, features), `README.md` (features, API, project layout), and `DOCKERHUB.md` (features list) to reflect the changes
 8. **Commit messages**: Use clear, descriptive commit messages that explain the "why" behind changes, not just the "what" (e.g., "Add frozen quantity field to meals for better inventory tracking" instead of "Add frozen_quantity column")
 9. **Code style**: Follow existing code style and conventions for consistency, even if they differ from your personal preferences
-10. **All new commits should be made on a feature branch. ***Never commit directly to main. Use descriptive branch names (e.g., `feature/add-ai-prompt-templates`, `bugfix/fix-meal-update-quantity-floor`)
+10. **Branching**: all work happens on feature branches cut from `develop`. Open PRs into `develop`, not `main`. `main` is production — only merge `develop` → `main` when releasing. Never commit directly to `main` or `develop`. Use descriptive branch names (e.g., `feature/add-ai-prompt-templates`, `bugfix/fix-meal-update-quantity-floor`)
