@@ -99,11 +99,16 @@ def test_backup_api_list_returns_files(client, tmp_path):
 
 
 def test_backup_api_download_blocks_path_traversal(client, tmp_path):
-    """Filenames containing path traversal characters are rejected with 400."""
+    """A symlink inside BACKUP_DIR that points outside it is rejected with 400."""
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
+    # File outside the backup directory
+    outside = tmp_path / "secret.db"
+    outside.write_bytes(b"secret data")
+    # Symlink inside backup_dir that resolves to outside — should be blocked
+    (backup_dir / "dinner_escape.db").symlink_to(outside)
     with patch("app.routers.backup.BACKUP_DIR", backup_dir):
-        r = client.get("/api/backup/download/evil..db")
+        r = client.get("/api/backup/download/dinner_escape.db")
     assert r.status_code == 400
 
 

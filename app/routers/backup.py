@@ -38,21 +38,16 @@ def list_backups():
 @router.get("/download/{filename}", response_class=FileResponse)
 def download_backup(filename: str):
     """Download a specific backup file by name."""
-    # Prevent obvious path traversal characters in the filename
-    if "/" in filename or "\\" in filename or ".." in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    path = BACKUP_DIR / filename
-    # Resolve to catch symlink-based traversal attempts
+    backup_root = BACKUP_DIR.resolve()
     try:
-        resolved = path.resolve()
-    except OSError:
-        raise HTTPException(status_code=404, detail="Backup not found")
-    if not resolved.is_relative_to(BACKUP_DIR.resolve()):
+        resolved = (backup_root / filename).resolve()
+        resolved.relative_to(backup_root)  # raises ValueError if outside root
+    except (OSError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid filename")
-    if not resolved.exists() or not resolved.name.startswith("dinner_"):
+    if not resolved.exists() or not resolved.is_file() or not resolved.name.startswith("dinner_"):
         raise HTTPException(status_code=404, detail="Backup not found")
     return FileResponse(
         path=str(resolved),
-        filename=filename,
+        filename=resolved.name,  # use filesystem-derived name, not user input
         media_type="application/x-sqlite3",
     )
