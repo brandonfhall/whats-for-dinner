@@ -38,10 +38,19 @@ def list_backups():
 @router.get("/download/{filename}", response_class=FileResponse)
 def download_backup(filename: str):
     """Download a specific backup file by name."""
-    # Prevent path traversal
+    # Prevent obvious path traversal attempts in the raw filename
     if "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
-    path = BACKUP_DIR / filename
+    base_dir = BACKUP_DIR.resolve()
+    path = (base_dir / filename).resolve()
+    # Ensure the resolved path is within the backup directory
+    try:
+        is_within_base = path.is_relative_to(base_dir)
+    except AttributeError:
+        # Fallback for Python versions without Path.is_relative_to
+        is_within_base = base_dir == path or base_dir in path.parents
+    if not is_within_base:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     if not path.exists() or not path.name.startswith("dinner_"):
         raise HTTPException(status_code=404, detail="Backup not found")
     return FileResponse(
