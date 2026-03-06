@@ -15,6 +15,19 @@ Household meal planning webapp. Python/FastAPI backend, Alpine.js frontend, SQLi
 - **Install deps**: `.venv/bin/pip install -r requirements.txt`
 - **Test deps**: `.venv/bin/pip install -r requirements-test.txt`
 
+## Local Docker Testing
+
+```bash
+# Copy .env.example and fill in your API key (AI_API_KEY)
+cp .env.example .env
+
+# Build and run with the local compose file
+docker compose -f docker-compose.local.yml up --build
+
+# App available at http://localhost:8000
+# Data persisted in the dinner-data Docker volume
+```
+
 ## Code Style & Conventions
 
 ### Backend (Python)
