@@ -124,3 +124,4 @@ docker compose -f docker-compose.local.yml up --build
 4. **Frontend**: Add data properties and methods to `app()` in `static/app.js`, add UI in `static/index.html`
 5. **Tests**: Add tests following existing patterns, run full suite to verify no regressions
 6. **Tailwind classes**: If using new Tailwind classes not already in the HTML, they may need to be added to the safelist in `static/css/input.css`
+7. **Documentation**: Update `docs/ARCHITECTURE.md` (schema, endpoints, features), `README.md` (features, API, project layout), and `DOCKERHUB.md` (features list) to reflect the changes
