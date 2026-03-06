@@ -304,3 +304,56 @@ def test_build_prompt_safe_mode_favours_favourites():
     )
     assert "Play It Safe" in prompt
     assert "3×" in prompt
+
+
+def test_build_prompt_on_hand_mode():
+    protein_inv = [
+        {"protein_name": "Chicken", "quantity": 3, "unit": "servings"},
+    ]
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        mode="on_hand",
+        protein_inventory=protein_inv,
+    )
+    assert "On Hand" in prompt
+    assert "PROTEIN INVENTORY" in prompt
+    assert "Chicken" in prompt
+
+
+def test_build_prompt_on_hand_includes_frozen_quantity():
+    library = [{"id": 1, "name": "Frozen Chili", "type": "frozen",
+                "frozen_quantity": 3, "protein_servings": 1,
+                "notes": "", "has_leftovers": False, "easy_to_make": False,
+                "shared_ingredients": "", "protein": "", "cuisine": "",
+                "usage_count": 0}]
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=library,
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        mode="on_hand",
+    )
+    assert "frozen_quantity" in prompt
+    assert "Frozen Chili" in prompt
+
+
+def test_generate_on_hand_mode_mocked(client, meals):
+    """Full generate flow with on_hand mode using mocked AI."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+                "mode": "on_hand",
+            })
+
+    assert r.status_code == 200
+    assert len(r.json()["suggestions"]) == 7

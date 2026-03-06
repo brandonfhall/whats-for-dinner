@@ -6,35 +6,22 @@ const CUISINES = [
   'Middle Eastern', 'French',
 ];
 
-const PROTEINS = [
-  { value: 'Chicken',    emoji: '🍗', group: 'meat' },
-  { value: 'Beef',       emoji: '🥩', group: 'meat' },
-  { value: 'Pork',       emoji: '🐷', group: 'meat' },
-  { value: 'Turkey',     emoji: '🦃', group: 'meat' },
-  { value: 'Fish',       emoji: '🐟', group: 'meat' },
-  { value: 'Seafood',    emoji: '🦐', group: 'meat' },
-  { value: 'Lamb',       emoji: '🐑', group: 'meat' },
-  { value: 'Tofu',       emoji: '🫘', group: 'veg' },
-  { value: 'Eggs',       emoji: '🥚', group: 'veg' },
-  { value: 'Beans',      emoji: '🫘', group: 'veg' },
-  { value: 'Lentils',    emoji: '🌱', group: 'veg' },
-  { value: 'Tempeh',     emoji: '🌿', group: 'veg' },
-  { value: 'Cheese',     emoji: '🧀', group: 'veg' },
-  { value: 'Vegetarian', emoji: '🥦', group: 'veg' },
-];
+// Proteins are loaded from the database — see loadProteinInventory()
 
 function proteinEmoji(value) {
-  return PROTEINS.find(p => p.value === value)?.emoji || '';
+  // Fallback for use outside Alpine context (e.g. month view tooltips)
+  return '';
 }
 
 function app() {
   return {
     // ── Navigation ──────────────────────────────────────────
     tabs: [
-      { id: 'week',     label: "This Week",    short: "Week" },
-      { id: 'library',  label: "Meal Library", short: "Library" },
-      { id: 'month',    label: "Month View",   short: "Month" },
-      { id: 'settings', label: "Settings",     short: "Settings" },
+      { id: 'week',      label: "This Week",    short: "Week" },
+      { id: 'library',   label: "Meal Library", short: "Library" },
+      { id: 'inventory', label: "Inventory",    short: "Inv." },
+      { id: 'month',     label: "Month View",   short: "Month" },
+      { id: 'settings',  label: "Settings",     short: "Settings" },
     ],
     activeTab: 'week',
 
@@ -74,11 +61,17 @@ function app() {
     // ── Meal editor ─────────────────────────────────────────
     mealEditorOpen: false,
     editingMeal: null,
-    mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '' },
+    mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '', frozen_quantity: 0, protein_servings: 1 },
     mealSearch: '',
     mealSaving: false,
-    proteins: PROTEINS,
+    proteinInventory: [],
     cuisines: CUISINES,
+
+    // ── Inventory & Shopping ──────────────────────────────────
+    shoppingList: null,
+    shoppingListLoading: false,
+    addProteinForm: { protein_name: '', display_name: '', emoji: '', group: 'meat', unit: 'servings' },
+    addProteinOpen: false,
 
     // ── Month view ──────────────────────────────────────────
     monthYear: new Date().getFullYear(),
@@ -93,6 +86,7 @@ function app() {
         this.loadMeals(),
         this.loadSettings(),
         this.loadAIStatus(),
+        this.loadProteinInventory(),
       ]);
     },
 
@@ -144,6 +138,7 @@ function app() {
     async switchTab(id) {
       this.activeTab = id;
       if (id === 'library') this.loadMeals();
+      if (id === 'inventory') this.loadProteinInventory();
       if (id === 'month') this.loadMonthData();
     },
 
@@ -255,7 +250,7 @@ function app() {
     filteredPickerMeals() {
       const q = this.mealPickerSearch.toLowerCase();
       return this.meals
-        .filter(m => m.meal_type === 'home_cooked' || m.meal_type === 'other')
+        .filter(m => m.meal_type === 'home_cooked' || m.meal_type === 'other' || m.meal_type === 'frozen')
         .filter(m => !q || m.name.toLowerCase().includes(q));
     },
 
@@ -264,7 +259,7 @@ function app() {
     },
 
     mealTypeLabel(t) {
-      return { home_cooked: 'Home cooked', eat_out: 'Eat out', other: 'Other' }[t] || t;
+      return { home_cooked: 'Home cooked', eat_out: 'Eat out', other: 'Other', frozen: 'Frozen' }[t] || t;
     },
 
     mealTypeClass(t) {
@@ -272,6 +267,7 @@ function app() {
         home_cooked: 'bg-green-100 text-green-700',
         eat_out: 'bg-blue-100 text-blue-700',
         other: 'bg-gray-100 text-gray-600',
+        frozen: 'bg-cyan-100 text-cyan-700',
       }[t] || 'bg-gray-100 text-gray-600';
     },
 
@@ -282,7 +278,9 @@ function app() {
     },
 
     proteinInfo(value) {
-      return PROTEINS.find(p => p.value === value) || null;
+      const p = this.proteinInventory.find(p => p.protein_name === value);
+      if (!p) return null;
+      return { value: p.protein_name, emoji: p.emoji, group: p.group };
     },
 
     // ── Day editor ──────────────────────────────────────────
@@ -346,7 +344,7 @@ function app() {
       this.editingMeal = meal;
       this.mealForm = meal
         ? { ...meal }
-        : { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '' };
+        : { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '', frozen_quantity: 0, protein_servings: 1 };
       this.mealEditorOpen = true;
     },
 
@@ -489,6 +487,69 @@ function app() {
       d.setDate(d.getDate() - d.getDay());
       this.activeTab = 'week';
       await this.goToWeek(d.toLocaleDateString('en-CA'));
+    },
+
+    // ── Frozen quantity ────────────────────────────────────────
+    async adjustFrozenQty(meal, delta) {
+      try {
+        const updated = await this.api('PATCH', `/meals/${meal.id}/frozen-quantity?delta=${delta}`);
+        const idx = this.meals.findIndex(m => m.id === meal.id);
+        if (idx >= 0) this.meals[idx] = updated;
+      } catch (e) {
+        alert('Failed to adjust: ' + e.message);
+      }
+    },
+
+    // ── Protein inventory ────────────────────────────────────
+    async loadProteinInventory() {
+      this.proteinInventory = await this.api('GET', '/inventory/proteins');
+    },
+
+    async adjustProtein(proteinName, delta) {
+      try {
+        const updated = await this.api('PATCH', `/inventory/proteins/${encodeURIComponent(proteinName)}/adjust?delta=${delta}`);
+        const idx = this.proteinInventory.findIndex(p => p.protein_name === proteinName);
+        if (idx >= 0) this.proteinInventory[idx] = updated;
+      } catch (e) {
+        alert('Failed to adjust: ' + e.message);
+      }
+    },
+
+    async saveNewProtein() {
+      const f = this.addProteinForm;
+      if (!f.protein_name.trim() || !f.display_name.trim()) return;
+      try {
+        const created = await this.api('POST', '/inventory/proteins', f);
+        this.proteinInventory.push(created);
+        this.proteinInventory.sort((a, b) => a.protein_name.localeCompare(b.protein_name));
+        this.addProteinForm = { protein_name: '', display_name: '', emoji: '', group: 'meat', unit: 'servings' };
+        this.addProteinOpen = false;
+      } catch (e) {
+        alert('Failed to add: ' + e.message);
+      }
+    },
+
+    async deleteProtein(proteinName) {
+      if (!confirm(`Remove "${proteinName}" from inventory?`)) return;
+      try {
+        await this.api('DELETE', `/inventory/proteins/${encodeURIComponent(proteinName)}`);
+        this.proteinInventory = this.proteinInventory.filter(p => p.protein_name !== proteinName);
+      } catch (e) {
+        alert('Failed to delete: ' + e.message);
+      }
+    },
+
+    // ── Shopping list ────────────────────────────────────────
+    async loadShoppingList() {
+      if (!this.currentPlan) return;
+      this.shoppingListLoading = true;
+      try {
+        this.shoppingList = await this.api('GET', `/plans/${this.currentPlan.id}/shopping-list`);
+      } catch (e) {
+        alert('Failed to load shopping list: ' + e.message);
+      } finally {
+        this.shoppingListLoading = false;
+      }
     },
 
     // ── Settings ─────────────────────────────────────────────

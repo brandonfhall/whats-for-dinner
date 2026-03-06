@@ -1,6 +1,6 @@
 from datetime import datetime, date, timezone
 from sqlalchemy import (
-    Integer, String, Boolean, Date, DateTime, ForeignKey, Enum as SAEnum
+    Integer, String, Boolean, Date, DateTime, Float, ForeignKey, Enum as SAEnum
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
@@ -12,6 +12,7 @@ class MealType(str, enum.Enum):
     home_cooked = "home_cooked"
     eat_out = "eat_out"
     other = "other"
+    frozen = "frozen"
 
 
 class DayType(str, enum.Enum):
@@ -39,6 +40,8 @@ class Meal(Base):
     shared_ingredients: Mapped[str] = mapped_column(String, default="")
     protein: Mapped[str] = mapped_column(String, default="")
     cuisine: Mapped[str] = mapped_column(String, default="")
+    frozen_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    protein_servings: Mapped[int] = mapped_column(Integer, default=1)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -74,6 +77,18 @@ class PlanDay(Base):
 
     plan: Mapped["WeeklyPlan"] = relationship("WeeklyPlan", back_populates="days")
     meal: Mapped["Meal | None"] = relationship("Meal", back_populates="plan_days")
+
+
+class ProteinInventory(Base):
+    __tablename__ = "protein_inventory"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    protein_name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String, nullable=False)
+    emoji: Mapped[str] = mapped_column(String, default="")
+    group: Mapped[str] = mapped_column(String, default="meat")
+    quantity: Mapped[float] = mapped_column(Float, default=0)
+    unit: Mapped[str] = mapped_column(String, default="servings")
 
 
 class Setting(Base):

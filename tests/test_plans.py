@@ -416,3 +416,66 @@ def test_notes_persist_across_requests(client):
 def test_update_plan_notes_not_found(client):
     r = client.put("/api/plans/99999/notes", json={"notes": "Ghost plan"})
     assert r.status_code == 404
+
+
+# ── Shopping list ────────────────────────────────────────────────────────────
+
+def test_shopping_list_empty_plan(client):
+    """A plan with no home-cooked meals returns an empty shopping list."""
+    plan = client.get("/api/plans/current").json()
+    r = client.get(f"/api/plans/{plan['id']}/shopping-list")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["items"] == []
+
+
+def test_shopping_list_shows_protein_shortage(client, meals):
+    """Shopping list shows protein needed vs on-hand."""
+    # meals[0] is Chicken Stir Fry (protein=Chicken, protein_servings=1)
+    plan = client.get("/api/plans/current").json()
+    client.put(f"/api/plans/{plan['id']}/days/1", json={
+        "day_type": "home_cooked", "meal_id": meals[0]["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    r = client.get(f"/api/plans/{plan['id']}/shopping-list")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    protein_items = [i for i in items if i["item_type"] == "protein"]
+    assert len(protein_items) == 1
+    assert protein_items[0]["item_name"] == "Chicken"
+    assert protein_items[0]["needed"] == 1
+    assert protein_items[0]["on_hand"] == 0
+    assert protein_items[0]["shortage"] == 1
+
+
+def test_shopping_list_frozen_needs(client):
+    """Shopping list shows frozen meal shortages."""
+    from tests.conftest import MEAL_DEFAULTS
+    frozen = client.post("/api/meals", json={
+        **MEAL_DEFAULTS, "name": "Frozen Lasagna", "meal_type": "frozen", "frozen_quantity": 1,
+    }).json()
+    plan = client.get("/api/plans/current").json()
+
+    # Assign the frozen meal to 2 days
+    client.put(f"/api/plans/{plan['id']}/days/1", json={
+        "day_type": "home_cooked", "meal_id": frozen["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+    client.put(f"/api/plans/{plan['id']}/days/3", json={
+        "day_type": "home_cooked", "meal_id": frozen["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    r = client.get(f"/api/plans/{plan['id']}/shopping-list")
+    items = r.json()["items"]
+    frozen_items = [i for i in items if i["item_type"] == "frozen"]
+    assert len(frozen_items) == 1
+    assert frozen_items[0]["needed"] == 2
+    assert frozen_items[0]["on_hand"] == 1
+    assert frozen_items[0]["shortage"] == 1
+
+
+def test_shopping_list_not_found(client):
+    r = client.get("/api/plans/99999/shopping-list")
+    assert r.status_code == 404

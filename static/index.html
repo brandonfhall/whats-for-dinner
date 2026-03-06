@@ -96,12 +96,23 @@
               <button
                 @click="generateAI('safe'); aiOpen = false"
                 :disabled="!currentPlan"
-                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 transition-colors"
+                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 border-b border-gray-100 transition-colors"
               >
                 <span class="text-lg">🛡️</span>
                 <div>
                   <p class="text-sm font-medium text-gray-800">Play it safe</p>
                   <p class="text-xs text-gray-400">Favour your favourites</p>
+                </div>
+              </button>
+              <button
+                @click="generateAI('on_hand'); aiOpen = false"
+                :disabled="!currentPlan"
+                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 transition-colors"
+              >
+                <span class="text-lg">📦</span>
+                <div>
+                  <p class="text-sm font-medium text-gray-800">On hand</p>
+                  <p class="text-xs text-gray-400">Only use what's in stock</p>
                 </div>
               </button>
             </div>
@@ -217,6 +228,13 @@
                   <span x-show="meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
                   <span x-show="meal.times_used > 0" class="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5" :title="meal.times_used + ' times on a plan'" x-text="'×' + meal.times_used"></span>
                 </div>
+                <!-- Frozen inventory controls -->
+                <div x-show="meal.meal_type === 'frozen'" class="flex items-center gap-1.5 mt-2">
+                  <button @click.stop="adjustFrozenQty(meal, -1)" class="w-6 h-6 rounded bg-cyan-100 text-cyan-700 text-sm font-bold hover:bg-cyan-200 transition-colors">-</button>
+                  <span class="text-sm font-semibold text-cyan-700 min-w-[2ch] text-center" x-text="meal.frozen_quantity"></span>
+                  <button @click.stop="adjustFrozenQty(meal, 1)" class="w-6 h-6 rounded bg-cyan-100 text-cyan-700 text-sm font-bold hover:bg-cyan-200 transition-colors">+</button>
+                  <span class="text-xs text-cyan-500">in freezer</span>
+                </div>
                 <p x-show="meal.notes" class="mt-1.5 text-xs text-gray-500 line-clamp-2" x-text="meal.notes"></p>
               </div>
               <div class="flex items-center gap-1 ml-2 shrink-0">
@@ -236,6 +254,107 @@
         <div x-show="filteredMeals().length === 0" class="col-span-full text-center py-12 text-gray-400">
           <p class="text-lg">No meals yet</p>
           <p class="text-sm mt-1">Add your first meal to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Inventory ─────────────────────────────────────────── -->
+    <div x-show="activeTab === 'inventory'" x-transition>
+      <h1 class="text-2xl font-bold text-gray-900 mb-6">Inventory</h1>
+
+      <!-- Protein Inventory -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">Protein Stock</h2>
+          <button @click="addProteinOpen = !addProteinOpen" class="px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-orange-600 transition-colors">+ Add Protein</button>
+        </div>
+
+        <!-- Add protein form -->
+        <div x-show="addProteinOpen" class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Key (no spaces)</label>
+              <input x-model="addProteinForm.protein_name" type="text" placeholder="e.g. duck" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Display name</label>
+              <input x-model="addProteinForm.display_name" type="text" placeholder="e.g. Duck" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Emoji</label>
+              <input x-model="addProteinForm.emoji" type="text" placeholder="e.g. 🦆" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Group</label>
+              <select x-model="addProteinForm.group" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                <option value="meat">Meat</option>
+                <option value="veg">Vegetarian</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button @click="saveNewProtein()" :disabled="!addProteinForm.protein_name.trim() || !addProteinForm.display_name.trim()" class="px-3 py-1.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors">Add</button>
+            <button @click="addProteinOpen = false" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Protein cards grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <template x-for="p in proteinInventory" :key="p.protein_name">
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-800" x-text="p.emoji + ' ' + p.display_name"></span>
+                <button @click="deleteProtein(p.protein_name)" class="text-gray-300 hover:text-red-500 text-xs transition-colors" title="Remove">✕</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <button @click="adjustProtein(p.protein_name, -1)" class="w-7 h-7 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200 transition-colors">-</button>
+                <span class="text-lg font-bold text-gray-800 min-w-[2ch] text-center" x-text="p.quantity"></span>
+                <button @click="adjustProtein(p.protein_name, 1)" class="w-7 h-7 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200 transition-colors">+</button>
+                <span class="text-xs text-gray-400" x-text="p.unit"></span>
+              </div>
+            </div>
+          </template>
+          <div x-show="proteinInventory.length === 0" class="col-span-full text-center py-8 text-gray-400">
+            <p>No proteins in inventory</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shopping List -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">Shopping List</h2>
+          <button @click="loadShoppingList()" :disabled="!currentPlan || shoppingListLoading" class="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+            <span x-show="!shoppingListLoading">Generate for current week</span>
+            <span x-show="shoppingListLoading">Loading...</span>
+          </button>
+        </div>
+
+        <div x-show="shoppingList" class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <div class="px-4 py-3 bg-gray-50 rounded-t-xl">
+            <p class="text-sm font-medium text-gray-700">Week of <span x-text="shoppingList?.week_start"></span></p>
+          </div>
+          <template x-for="item in shoppingList?.items || []" :key="item.item_name">
+            <div class="px-4 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs rounded px-1.5 py-0.5" :class="item.item_type === 'protein' ? 'bg-red-100 text-red-700' : 'bg-cyan-100 text-cyan-700'" x-text="item.item_type === 'protein' ? 'Protein' : 'Frozen'"></span>
+                <span class="text-sm font-medium text-gray-800" x-text="item.item_name"></span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="text-gray-500">need <span class="font-medium" x-text="item.needed"></span></span>
+                <span class="text-gray-500">have <span class="font-medium" x-text="item.on_hand"></span></span>
+                <span x-show="item.shortage > 0" class="font-semibold text-red-600" x-text="'buy ' + item.shortage + ' ' + item.unit"></span>
+                <span x-show="item.shortage <= 0" class="text-green-600 font-medium">OK</span>
+              </div>
+            </div>
+          </template>
+          <div x-show="shoppingList?.items?.length === 0" class="px-4 py-6 text-center text-gray-400 text-sm">
+            No items needed — everything is in stock or no meals planned.
+          </div>
+        </div>
+
+        <div x-show="!shoppingList" class="text-center py-8 text-gray-400 text-sm">
+          Click "Generate" to see what you need for this week's plan.
         </div>
       </div>
     </div>
@@ -429,6 +548,7 @@ AI_API_KEY=sk-ant-...</pre>
                 <div>
                   <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
                   <div class="flex gap-1 mt-0.5">
+                    <span x-show="meal.meal_type === 'frozen'" class="text-xs bg-cyan-100 text-cyan-700 rounded px-1 py-0.5" x-text="'❄️ ×' + meal.frozen_quantity"></span>
                     <span x-show="meal.protein" class="text-xs" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
                     <span x-show="meal.easy_to_make" class="text-xs text-yellow-600">⚡ easy</span>
                     <span x-show="meal.has_leftovers" class="text-xs text-blue-600">📦 leftovers</span>
@@ -559,7 +679,7 @@ AI_API_KEY=sk-ant-...</pre>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
           <div class="flex gap-2">
-            <template x-for="opt in [{v:'home_cooked',l:'Home cooked'},{v:'eat_out',l:'Eat out'},{v:'other',l:'Other'}]" :key="opt.v">
+            <template x-for="opt in [{v:'home_cooked',l:'Home cooked'},{v:'frozen',l:'Frozen'},{v:'eat_out',l:'Eat out'},{v:'other',l:'Other'}]" :key="opt.v">
               <button
                 @click="mealForm.meal_type = opt.v"
                 :class="mealForm.meal_type === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
@@ -578,17 +698,35 @@ AI_API_KEY=sk-ant-...</pre>
               :class="mealForm.protein === '' ? 'bg-gray-200 text-gray-700 ring-1 ring-gray-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
             >None</button>
-            <template x-for="p in proteins" :key="p.value">
+            <template x-for="p in proteinInventory" :key="p.protein_name">
               <button
-                @click="mealForm.protein = p.value"
-                :class="mealForm.protein === p.value
+                @click="mealForm.protein = p.protein_name"
+                :class="mealForm.protein === p.protein_name
                   ? (p.group === 'meat' ? 'bg-red-200 text-red-800 ring-1 ring-red-400' : 'bg-teal-200 text-teal-800 ring-1 ring-teal-400')
                   : (p.group === 'meat' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-teal-50 text-teal-600 hover:bg-teal-100')"
                 class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-                x-text="p.emoji + ' ' + p.value"
+                x-text="p.emoji + ' ' + p.display_name"
               ></button>
             </template>
           </div>
+        </div>
+
+        <!-- Frozen quantity (only for frozen meals) -->
+        <div x-show="mealForm.meal_type === 'frozen'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Frozen quantity</label>
+          <div class="flex items-center gap-2">
+            <button @click="mealForm.frozen_quantity = Math.max(0, mealForm.frozen_quantity - 1)" class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 text-lg font-bold hover:bg-cyan-200 transition-colors">-</button>
+            <span class="text-lg font-semibold text-cyan-700 min-w-[3ch] text-center" x-text="mealForm.frozen_quantity"></span>
+            <button @click="mealForm.frozen_quantity++" class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 text-lg font-bold hover:bg-cyan-200 transition-colors">+</button>
+            <span class="text-sm text-gray-500">portions</span>
+          </div>
+        </div>
+
+        <!-- Protein servings (for home_cooked and frozen) -->
+        <div x-show="mealForm.meal_type === 'home_cooked' || mealForm.meal_type === 'frozen'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Protein servings needed</label>
+          <p class="text-xs text-gray-400 mb-2">How many standard servings of protein this meal requires</p>
+          <input x-model.number="mealForm.protein_servings" type="number" min="0" class="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
         </div>
 
         <div>

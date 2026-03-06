@@ -197,3 +197,80 @@ def test_update_meal_cuisine(client):
     r = client.put(f"/api/meals/{meal['id']}", json={**MEAL_DEFAULTS, "name": "Tacos", "cuisine": "Mexican"})
     assert r.status_code == 200
     assert r.json()["cuisine"] == "Mexican"
+
+
+# ── Frozen meals ────────────────────────────────────────────────────────────
+
+def test_create_frozen_meal(client):
+    r = client.post("/api/meals", json={
+        **MEAL_DEFAULTS,
+        "name": "Homemade Lasagna",
+        "meal_type": "frozen",
+        "frozen_quantity": 3,
+    })
+    assert r.status_code == 201
+    data = r.json()
+    assert data["meal_type"] == "frozen"
+    assert data["frozen_quantity"] == 3
+
+
+def test_frozen_quantity_default_zero(client):
+    meal = create_meal(client, "Regular Chicken")
+    assert meal["frozen_quantity"] == 0
+
+
+def test_adjust_frozen_quantity_increment(client):
+    meal = client.post("/api/meals", json={
+        **MEAL_DEFAULTS, "name": "Frozen Chili", "meal_type": "frozen", "frozen_quantity": 2,
+    }).json()
+    r = client.patch(f"/api/meals/{meal['id']}/frozen-quantity?delta=3")
+    assert r.status_code == 200
+    assert r.json()["frozen_quantity"] == 5
+
+
+def test_adjust_frozen_quantity_decrement(client):
+    meal = client.post("/api/meals", json={
+        **MEAL_DEFAULTS, "name": "Frozen Soup", "meal_type": "frozen", "frozen_quantity": 4,
+    }).json()
+    r = client.patch(f"/api/meals/{meal['id']}/frozen-quantity?delta=-2")
+    assert r.status_code == 200
+    assert r.json()["frozen_quantity"] == 2
+
+
+def test_adjust_frozen_quantity_floor_at_zero(client):
+    meal = client.post("/api/meals", json={
+        **MEAL_DEFAULTS, "name": "Frozen Stew", "meal_type": "frozen", "frozen_quantity": 1,
+    }).json()
+    r = client.patch(f"/api/meals/{meal['id']}/frozen-quantity?delta=-10")
+    assert r.status_code == 200
+    assert r.json()["frozen_quantity"] == 0
+
+
+def test_adjust_frozen_quantity_not_found(client):
+    r = client.patch("/api/meals/99999/frozen-quantity?delta=1")
+    assert r.status_code == 404
+
+
+# ── Protein servings ────────────────────────────────────────────────────────
+
+def test_protein_servings_default_is_one(client):
+    meal = create_meal(client, "Simple Meal")
+    assert meal["protein_servings"] == 1
+
+
+def test_create_meal_with_protein_servings(client):
+    r = client.post("/api/meals", json={
+        **MEAL_DEFAULTS, "name": "Chicken Curry", "meal_type": "home_cooked",
+        "protein": "Chicken", "protein_servings": 2,
+    })
+    assert r.status_code == 201
+    assert r.json()["protein_servings"] == 2
+
+
+def test_update_protein_servings(client):
+    meal = create_meal(client, "Beef Stew")
+    r = client.put(f"/api/meals/{meal['id']}", json={
+        **MEAL_DEFAULTS, "name": "Beef Stew", "protein_servings": 3,
+    })
+    assert r.status_code == 200
+    assert r.json()["protein_servings"] == 3

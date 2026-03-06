@@ -79,3 +79,16 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)):
     logger.info("Meal deactivated | %r", meal.name)
     meal.active = False
     db.commit()
+
+
+@router.patch("/{meal_id}/frozen-quantity", response_model=MealOut)
+def adjust_frozen_quantity(meal_id: int, delta: int, db: Session = Depends(get_db)):
+    """Increment or decrement frozen_quantity by delta."""
+    meal = db.query(Meal).filter(Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    meal.frozen_quantity = max(0, meal.frozen_quantity + delta)
+    db.commit()
+    db.refresh(meal)
+    counts = _usage_counts(db)
+    return _with_usage(meal, counts)
