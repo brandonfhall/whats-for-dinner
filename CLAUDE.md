@@ -107,12 +107,13 @@ docker compose -f docker-compose.local.yml up --build
 | `app/main.py` | FastAPI app, middleware, router registration |
 | `app/models.py` | SQLAlchemy ORM models |
 | `app/schemas.py` | Pydantic request/response schemas |
-| `app/database.py` | DB engine, sessions, migrations, seed data |
+| `app/database.py` | DB engine, sessions, migrations, backup, seed data |
 | `app/routers/meals.py` | Meal CRUD + frozen quantity adjustment |
 | `app/routers/plans.py` | Plan CRUD + day updates + shopping list |
 | `app/routers/ai.py` | AI plan generation (Claude/OpenAI) |
 | `app/routers/settings.py` | Key-value settings store |
 | `app/routers/inventory.py` | Protein inventory CRUD |
+| `app/routers/backup.py` | Database backup/export endpoints |
 | `static/app.js` | All frontend Alpine.js logic |
 | `static/index.html` | SPA HTML template |
 

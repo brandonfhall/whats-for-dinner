@@ -162,13 +162,14 @@ whats-for-dinner/
 │       ├── plans.py      # Weekly plan CRUD + day updates + shopping list
 │       ├── ai.py         # AI plan generation + status check
 │       ├── inventory.py  # Protein inventory CRUD
+│       ├── backup.py     # Database backup/export
 │       └── settings.py   # Key-value settings store
 ├── static/
 │   ├── index.html        # SPA shell
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
 │       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
-├── tests/                # pytest suite (129 tests, in-memory SQLite)
+├── tests/                # pytest suite (139 tests, in-memory SQLite)
 │   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
 ├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
@@ -203,6 +204,10 @@ DELETE /api/inventory/proteins/{name}          Remove a protein entry
 GET    /api/ai/status                          Check if AI is configured
 POST   /api/ai/generate                        Generate a plan with AI
 
+POST   /api/backup                             Create backup and download
+GET    /api/backup/list                        List available backups
+GET    /api/backup/download/{filename}         Download a specific backup
+
 GET    /api/settings                           Read settings
 PUT    /api/settings                           Update settings
 ```
@@ -213,7 +218,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 129 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 139 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

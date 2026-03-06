@@ -159,6 +159,13 @@ Household meal planning web application for two people. Single-container Docker 
 | PATCH  | /proteins/{protein_name}/adjust?delta=N | Adjust quantity by delta   |
 | DELETE | /proteins/{protein_name}                | Remove protein entry       |
 
+### Backup (`/api/backup`)
+| Method | Path                 | Description                          |
+|--------|----------------------|--------------------------------------|
+| POST   | /                    | Create backup and download            |
+| GET    | /list                | List available backup files           |
+| GET    | /download/{filename} | Download a specific backup            |
+
 ### Settings (`/api/settings`)
 | Method | Path | Description       |
 |--------|------|-------------------|
@@ -201,3 +208,5 @@ Household meal planning web application for two people. Single-container Docker 
 - Shopping list computed on-the-fly (not persisted)
 - Protein seed data auto-populated on first startup if table is empty
 - Non-negative quantities enforced at both code layer (`max(0, ...)`) and DB layer (`CHECK` constraints) for `frozen_quantity`, `protein_servings`, and `protein_inventory.quantity`
+- Automatic database backup before migrations (SQLite backup API); manual backup via `/api/backup`
+- Backup files stored in `data/backups/`, pruned to last 5 per reason
