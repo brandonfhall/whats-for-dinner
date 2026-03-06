@@ -62,6 +62,51 @@ def test_backup_prunes_old_files(tmp_path):
     assert len(remaining) == 2
 
 
+def test_backup_api_create_and_download(client, tmp_path):
+    """POST /api/backup creates a backup and returns it as a file download."""
+    fake_backup = tmp_path / "dinner_manual_20260101_000000_000000.db"
+    fake_backup.write_bytes(b"SQLite format 3\x00")
+
+    with patch("app.routers.backup.backup_db", return_value=fake_backup):
+        r = client.post("/api/backup")
+
+    assert r.status_code == 200
+    assert "application/x-sqlite3" in r.headers.get("content-type", "")
+
+
+def test_backup_api_create_returns_404_if_no_db(client):
+    """POST /api/backup returns 404 when the source database does not exist."""
+    with patch("app.routers.backup.backup_db", return_value=None):
+        r = client.post("/api/backup")
+    assert r.status_code == 404
+
+
+def test_backup_api_list_returns_files(client, tmp_path):
+    """GET /api/backup/list returns file metadata for existing backups."""
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    fname = "dinner_manual_20260101_000000_000000.db"
+    (backup_dir / fname).write_bytes(b"x" * 42)
+
+    with patch("app.routers.backup.BACKUP_DIR", backup_dir):
+        r = client.get("/api/backup/list")
+
+    assert r.status_code == 200
+    files = r.json()
+    assert len(files) == 1
+    assert files[0]["filename"] == fname
+    assert files[0]["size_bytes"] == 42
+
+
+def test_backup_api_download_blocks_path_traversal(client, tmp_path):
+    """Filenames containing path traversal characters are rejected with 400."""
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    with patch("app.routers.backup.BACKUP_DIR", backup_dir):
+        r = client.get("/api/backup/download/evil..db")
+    assert r.status_code == 400
+
+
 def test_backup_api_list_empty(client):
     """GET /api/backup/list returns empty list when no backups exist."""
     with patch("app.routers.backup.BACKUP_DIR", Path("/nonexistent")):

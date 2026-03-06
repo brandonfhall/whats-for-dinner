@@ -76,6 +76,8 @@ docker compose -f docker-compose.local.yml up --build
 - `tests/test_settings.py` — settings key-value store
 - `tests/test_security.py` — middleware (CORS, subnet, access log)
 - `tests/test_frontend_assets.py` — CSS/JS config verification
+- `tests/test_migrations.py` — CHECK constraint migration logic
+- `tests/test_backup.py` — database backup/export endpoints and weekly backup logic
 
 ### Test Patterns
 - Use the `client` fixture for API testing (FastAPI TestClient)

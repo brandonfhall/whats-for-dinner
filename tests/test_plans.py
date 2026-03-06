@@ -106,6 +106,26 @@ def test_new_week_has_seven_days(client):
     assert day_numbers == list(range(7))
 
 
+# ── Create plan via POST ──────────────────────────────────────────────────────
+
+def test_create_plan_via_post(client):
+    """POST /api/plans creates a new plan and returns 201."""
+    current = client.get("/api/plans/current").json()
+    future_sunday = (date.fromisoformat(current["week_start"]) + timedelta(weeks=4)).isoformat()
+    r = client.post("/api/plans", json={"week_start": future_sunday})
+    assert r.status_code == 201
+    data = r.json()
+    assert data["week_start"] == future_sunday
+    assert len(data["days"]) == 7
+
+
+def test_create_plan_post_conflict_returns_409(client):
+    """POST /api/plans returns 409 when a plan for that week already exists."""
+    current = client.get("/api/plans/current").json()
+    r = client.post("/api/plans", json={"week_start": current["week_start"]})
+    assert r.status_code == 409
+
+
 # ── Gym / eat-out pre-population ──────────────────────────────────────────────
 
 def test_gym_days_pre_populated_as_home_cooked(client):
@@ -175,6 +195,14 @@ def test_update_day_eat_out_clears_meal(client, meals):
     data = r.json()
     assert data["meal_id"] is None
     assert data["custom_name"] == "Chipotle"
+
+
+def test_update_day_plan_not_found_returns_404(client):
+    r = client.put("/api/plans/99999/days/1", json={
+        "day_type": "skip", "meal_id": None,
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+    assert r.status_code == 404
 
 
 def test_update_day_invalid_dow_returns_422(client):

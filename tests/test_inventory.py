@@ -84,6 +84,11 @@ def test_create_protein_negative_quantity_floors_at_zero(client):
     assert r.json()["quantity"] == 0
 
 
+def test_update_protein_not_found_returns_404(client):
+    r = client.put("/api/inventory/proteins/Nonexistent", json={"quantity": 5})
+    assert r.status_code == 404
+
+
 def test_update_protein_negative_quantity_floors_at_zero(client):
     client.post("/api/inventory/proteins", json={"protein_name": "Elk", "display_name": "Elk"})
     r = client.put("/api/inventory/proteins/Elk", json={"quantity": -3})
