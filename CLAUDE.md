@@ -47,6 +47,15 @@ docker compose -f docker-compose.local.yml up --build
 - Tab-based SPA navigation (no URL routing)
 - All API calls through the `api(method, path, body)` helper
 
+### Mobile Layout Rules
+The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. These rules prevent overflow on 375px phones:
+- **Nav tab short labels**: must be a single emoji or ≤5 characters — `Settings` overflows, `⚙️` does not
+- **Nav logo**: use `sm:hidden` / `hidden sm:inline` spans to collapse the title text on mobile
+- **Multi-button rows with 4 options**: use `grid grid-cols-2 sm:grid-cols-4` — a plain `flex` row leaves each button too narrow for labels like "Home cooked"
+- **Multi-column content rows** (e.g. item name + quantities): use `flex-col sm:flex-row` to stack on mobile
+- **Filter/chip groups**: always add `flex-wrap` so pills wrap rather than overflow
+- `test_frontend_assets.py` contains regression tests for all of the above — run them after any nav or layout change
+
 ### Naming Conventions
 - Python: snake_case for functions, variables, file names
 - JavaScript: camelCase for methods and variables
@@ -91,6 +100,7 @@ docker compose -f docker-compose.local.yml up --build
 - Schema validation (default values, optional fields)
 - Business logic (quantity floors at 0, soft deletes, carry-forward)
 - AI prompt content for new modes
+- Frontend layout changes: add/update assertions in `test_frontend_assets.py` for any new nav labels, multi-button rows, or content rows (see Mobile Layout Rules above)
 
 ## Project Constraints
 
