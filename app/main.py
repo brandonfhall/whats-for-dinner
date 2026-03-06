@@ -14,7 +14,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.database import init_db
-from app.routers import meals, plans, ai, settings
+from app.routers import meals, plans, ai, settings, inventory, backup
 
 _app_log = logging.getLogger("dinner.app")
 _access_log = logging.getLogger("dinner.access")
@@ -108,6 +108,8 @@ app.include_router(settings.router)
 app.include_router(meals.router)
 app.include_router(plans.router)
 app.include_router(ai.router)
+app.include_router(inventory.router)
+app.include_router(backup.router)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

@@ -13,12 +13,16 @@ Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 ## Features
 
 - **Meal Library** — track every meal with notes, recipe link, protein type, cuisine tag, and flags like ⚡ easy-to-make and 📦 has-leftovers
-- **Weekly planner** — a 7-day grid for dinners; click any day to set it as home-cooked, eating out, or unplanned
+- **Frozen Meal Inventory** — track homemade frozen meal prep portions with +/- quantity controls in the library and meal editor
+- **Protein Inventory** — database-driven protein stock tracking (14 defaults auto-seeded); adjust quantities per serving and monitor what's on hand
+- **Weekly planner** — a 7-day grid for dinners; click any day to set it as home-cooked, eating out, frozen, or unplanned
 - **Week notes** — a free-text memo on each week (guests, theme, etc.); auto-saves on blur
-- **AI suggestions** — Claude or GPT-4o drafts the week based on your history and library; two modes: 🎲 Mix it up (favour less-used meals) or 🛡️ Play it safe (favour favourites); AI varies both protein and cuisine across the week
+- **Shopping list** — read-only view comparing planned meal needs vs current inventory (protein stock + frozen meal count)
+- **AI suggestions** — Claude or GPT-4o drafts the week based on your history and library; three modes: 🎲 Mix it up (favour less-used meals), 🛡️ Play it safe (favour favourites), or 📦 On hand (only suggest meals with available protein/frozen stock)
 - **Gym nights** — configure which nights you go to the gym; AI will prefer easy-to-make meals on those nights
 - **📌 Carry-forward** — pin any day so its meal copies to the same day next week automatically
 - **Past weeks** — browse previous plans to jog your memory
+- **Database backups** — automatic pre-migration and weekly backups (5-week retention); manual export via `POST /api/backup`
 - **Offline-capable** — Alpine.js and Tailwind CSS are vendored into the Docker image at build time; no CDN or internet access required at runtime
 
 ---
@@ -89,7 +93,7 @@ Go to **Meal Library** and add the meals you cook regularly. For each meal you c
 | Field | Description |
 |---|---|
 | Name | What you call it |
-| Type | Home cooked / Eat out / Other |
+| Type | Home cooked / Eat out / Frozen / Other |
 | Protein | Chicken, Beef, Fish, Tofu, etc. — used by AI to vary proteins across the week |
 | Cuisine | Italian, Mexican, Asian, etc. — used by AI to avoid back-to-back same cuisines |
 | ⚡ Easy to make | Low effort — good for after the gym |
@@ -97,12 +101,15 @@ Go to **Meal Library** and add the meals you cook regularly. For each meal you c
 | Recipe link | URL to the recipe (opens in a new tab) |
 | Notes | Anything useful — prep time, variations, etc. |
 | Shared ingredients | Notes on ingredient overlap with other meals |
+| Frozen quantity | Number of frozen portions available (frozen type only) |
+| Protein servings | How many protein servings this meal needs (used for shopping list) |
 
 ### Planning the week
 
 Click **This Week**. Each day starts as "Not planned." Click a day to set it:
 
 - **Home cooked** — pick a meal from your library
+- **Frozen** — pick a frozen meal (deducts from frozen inventory)
 - **Eat out** — type where/what (e.g. "Chipotle", "Thai place")
 - **No plan** — leave it unset
 
@@ -112,6 +119,7 @@ Once you have some meals in the library, click **✨ Suggest with AI** and pick 
 
 - **🎲 Mix it up** — favours meals you haven't had recently or at all. Good for breaking out of a rut.
 - **🛡️ Play it safe** — favours household favourites (high usage count). Good for a low-effort week.
+- **📦 On hand** — only suggests meals with available protein stock or frozen portions. Good for using what you've got.
 
 Claude (or GPT-4o) looks at your full meal library, the last 8 weeks of plans, and your configured gym/eat-out nights, then fills in all 7 days. Click any day afterward to adjust.
 
@@ -148,19 +156,21 @@ whats-for-dinner/
 ├── app/
 │   ├── main.py           # FastAPI app, middleware, access log
 │   ├── database.py       # SQLAlchemy + SQLite setup
-│   ├── models.py         # ORM models (Meal, WeeklyPlan, PlanDay, Setting)
+│   ├── models.py         # ORM models (Meal, WeeklyPlan, PlanDay, Setting, ProteinInventory)
 │   ├── schemas.py        # Pydantic request/response schemas
 │   └── routers/
-│       ├── meals.py      # Meal library CRUD
-│       ├── plans.py      # Weekly plan CRUD + day updates
+│       ├── meals.py      # Meal library CRUD + frozen quantity adjustment
+│       ├── plans.py      # Weekly plan CRUD + day updates + shopping list
 │       ├── ai.py         # AI plan generation + status check
+│       ├── inventory.py  # Protein inventory CRUD
+│       ├── backup.py     # Database backup/export
 │       └── settings.py   # Key-value settings store
 ├── static/
 │   ├── index.html        # SPA shell
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
 │       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
-├── tests/                # pytest suite (98 tests, in-memory SQLite)
+├── tests/                # pytest suite (142 tests, in-memory SQLite)
 │   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
 ├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
@@ -176,19 +186,31 @@ whats-for-dinner/
 The backend exposes a REST API at `/api/`. Useful endpoints:
 
 ```
-GET  /api/meals                    List meal library
-POST /api/meals                    Add a meal
-PUT  /api/meals/{id}               Update a meal
+GET    /api/meals                              List meal library
+POST   /api/meals                              Add a meal
+PUT    /api/meals/{id}                         Update a meal
+PATCH  /api/meals/{id}/frozen-quantity?delta=N  Adjust frozen inventory count
 
-GET  /api/plans/current            Get (or create) this week's plan
-PUT  /api/plans/{id}/days/{0-6}    Update a single day in a plan
-PUT  /api/plans/{id}/notes         Update week-level notes
+GET    /api/plans/current                      Get (or create) this week's plan
+PUT    /api/plans/{id}/days/{0-6}              Update a single day in a plan
+PUT    /api/plans/{id}/notes                   Update week-level notes
+GET    /api/plans/{id}/shopping-list           Generate shopping list vs inventory
 
-GET  /api/ai/status                Check if AI is configured
-POST /api/ai/generate              Generate a plan with AI
+GET    /api/inventory/proteins                 List protein inventory
+POST   /api/inventory/proteins                 Add a protein entry
+PUT    /api/inventory/proteins/{name}          Update a protein entry
+PATCH  /api/inventory/proteins/{name}/adjust   Adjust quantity by delta
+DELETE /api/inventory/proteins/{name}          Remove a protein entry
 
-GET  /api/settings                 Read settings
-PUT  /api/settings                 Update settings
+GET    /api/ai/status                          Check if AI is configured
+POST   /api/ai/generate                        Generate a plan with AI
+
+POST   /api/backup                             Create backup and download
+GET    /api/backup/list                        List available backups
+GET    /api/backup/download/{filename}         Download a specific backup
+
+GET    /api/settings                           Read settings
+PUT    /api/settings                           Update settings
 ```
 
 Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Swagger UI).
@@ -197,7 +219,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 98 tests covering the meals, plans, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 142 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

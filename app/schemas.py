@@ -15,8 +15,10 @@ class MealBase(BaseModel):
     has_leftovers: bool = False
     easy_to_make: bool = False
     shared_ingredients: str = ""
-    protein: str = ""  # e.g. "Chicken", "Beef", "Tofu" — selected from a preset list
+    protein: str = ""  # e.g. "Chicken", "Beef", "Tofu" — selected from protein_inventory
     cuisine: str = ""  # e.g. "Italian", "Mexican" — selected from a preset list
+    frozen_quantity: int = 0
+    protein_servings: int = 1
 
 
 class MealCreate(MealBase):
@@ -27,6 +29,8 @@ class MealUpdate(MealBase):
     name: Optional[str] = None
     meal_type: Optional[MealType] = None
     active: Optional[bool] = None
+    frozen_quantity: Optional[int] = None
+    protein_servings: Optional[int] = None
 
 
 class MealOut(MealBase):
@@ -128,3 +132,48 @@ class SettingsUpdate(BaseModel):
     gym_days: Optional[list[int]] = None
     eat_out_days: Optional[list[int]] = None
     ai_provider: Optional[str] = None
+
+
+# ── Protein Inventory ────────────────────────────────────────────────────────
+
+class ProteinInventoryCreate(BaseModel):
+    protein_name: str
+    display_name: str
+    emoji: str = ""
+    group: str = "meat"
+    quantity: float = 0
+    unit: str = "servings"
+
+
+class ProteinInventoryUpdate(BaseModel):
+    display_name: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+
+
+class ProteinInventoryOut(BaseModel):
+    id: int
+    protein_name: str
+    display_name: str
+    emoji: str
+    group: str
+    quantity: float
+    unit: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── Shopping List ────────────────────────────────────────────────────────────
+
+class ShoppingListItem(BaseModel):
+    item_name: str
+    item_type: str       # "protein" or "frozen"
+    needed: float
+    on_hand: float
+    shortage: float
+    unit: str = ""
+
+
+class ShoppingListOut(BaseModel):
+    week_start: date
+    items: list[ShoppingListItem] = []

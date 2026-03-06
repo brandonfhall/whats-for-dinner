@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models import WeeklyPlan, PlanDay, DayType, PlanStatus
-from app.schemas import WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, WeeklyPlanNotesUpdate, PlanDayUpdate, PlanDayOut
+from app.models import WeeklyPlan, PlanDay, DayType, PlanStatus, Meal, MealType, ProteinInventory
+from app.schemas import (
+    WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, WeeklyPlanNotesUpdate,
+    PlanDayUpdate, PlanDayOut, ShoppingListOut, ShoppingListItem,
+)
 from app.routers.settings import get_all_settings
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
@@ -183,3 +186,62 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db)):
     db.query(PlanDay).filter(PlanDay.plan_id == plan_id).delete()
     db.delete(plan)
     db.commit()
+
+
+@router.get("/{plan_id}/shopping-list", response_model=ShoppingListOut)
+def get_shopping_list(plan_id: int, db: Session = Depends(get_db)):
+    plan = _load_plan(plan_id, db)
+    protein_needs: dict[str, float] = {}
+    frozen_needs: dict[int, int] = {}
+
+    for day in plan.days:
+        if day.day_type != DayType.home_cooked or not day.meal:
+            continue
+        meal = day.meal
+        if meal.meal_type == MealType.frozen:
+            frozen_needs[meal.id] = frozen_needs.get(meal.id, 0) + 1
+        if meal.protein:
+            protein_needs[meal.protein] = (
+                protein_needs.get(meal.protein, 0) + meal.protein_servings
+            )
+
+    items: list[ShoppingListItem] = []
+
+    # Protein shortages
+    if protein_needs:
+        inv_rows = (
+            db.query(ProteinInventory)
+            .filter(ProteinInventory.protein_name.in_(protein_needs.keys()))
+            .all()
+        )
+        inv_map = {r.protein_name: r for r in inv_rows}
+        for protein_name, needed in sorted(protein_needs.items()):
+            inv = inv_map.get(protein_name)
+            on_hand = inv.quantity if inv else 0
+            unit = inv.unit if inv else "servings"
+            items.append(ShoppingListItem(
+                item_name=protein_name,
+                item_type="protein",
+                needed=needed,
+                on_hand=on_hand,
+                shortage=max(0, needed - on_hand),
+                unit=unit,
+            ))
+
+    # Frozen meal shortages
+    if frozen_needs:
+        frozen_meals = (
+            db.query(Meal).filter(Meal.id.in_(frozen_needs.keys())).all()
+        )
+        for meal in sorted(frozen_meals, key=lambda m: m.name):
+            needed = frozen_needs[meal.id]
+            items.append(ShoppingListItem(
+                item_name=meal.name,
+                item_type="frozen",
+                needed=needed,
+                on_hand=meal.frozen_quantity,
+                shortage=max(0, needed - meal.frozen_quantity),
+                unit="portions",
+            ))
+
+    return ShoppingListOut(week_start=plan.week_start, items=items)

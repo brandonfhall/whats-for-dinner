@@ -41,7 +41,10 @@ def list_meals(active_only: bool = True, db: Session = Depends(get_db)):
 
 @router.post("", response_model=MealOut, status_code=201)
 def create_meal(payload: MealCreate, db: Session = Depends(get_db)):
-    meal = Meal(**payload.model_dump())
+    data = payload.model_dump()
+    data["frozen_quantity"] = max(0, data.get("frozen_quantity", 0))
+    data["protein_servings"] = max(0, data.get("protein_servings", 1))
+    meal = Meal(**data)
     db.add(meal)
     db.commit()
     db.refresh(meal)
@@ -64,6 +67,8 @@ def update_meal(meal_id: int, payload: MealUpdate, db: Session = Depends(get_db)
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
     for field, value in payload.model_dump(exclude_none=True).items():
+        if field in ("frozen_quantity", "protein_servings") and value is not None:
+            value = max(0, value)
         setattr(meal, field, value)
     db.commit()
     db.refresh(meal)
@@ -79,3 +84,16 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)):
     logger.info("Meal deactivated | %r", meal.name)
     meal.active = False
     db.commit()
+
+
+@router.patch("/{meal_id}/frozen-quantity", response_model=MealOut)
+def adjust_frozen_quantity(meal_id: int, delta: int, db: Session = Depends(get_db)):
+    """Increment or decrement frozen_quantity by delta."""
+    meal = db.query(Meal).filter(Meal.id == meal_id).first()
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+    meal.frozen_quantity = max(0, meal.frozen_quantity + delta)
+    db.commit()
+    db.refresh(meal)
+    counts = _usage_counts(db)
+    return _with_usage(meal, counts)

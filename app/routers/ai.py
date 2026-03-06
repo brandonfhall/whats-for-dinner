@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 logger = logging.getLogger(__name__)
 
 from app.database import get_db
-from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus
+from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus, ProteinInventory
 from app.schemas import AIGenerateRequest, AIGenerateResponse, AIDaySuggestion
 from app.routers.settings import get_all_settings
 
@@ -59,6 +59,8 @@ def _get_meal_library(db: Session) -> list[dict]:
             "protein": m.protein,
             "cuisine": m.cuisine,
             "usage_count": count_map.get(m.id, 0),
+            "frozen_quantity": m.frozen_quantity,
+            "protein_servings": m.protein_servings,
         }
         for m in meals
     ]
@@ -90,6 +92,14 @@ def _get_history(db: Session, before: date, weeks: int = 8) -> list[dict]:
     return history
 
 
+def _get_protein_inventory(db: Session) -> list[dict]:
+    rows = db.query(ProteinInventory).all()
+    return [
+        {"protein_name": r.protein_name, "quantity": r.quantity, "unit": r.unit}
+        for r in rows
+    ]
+
+
 def _build_prompt(
     week_start: date,
     library: list[dict],
@@ -97,11 +107,25 @@ def _build_prompt(
     gym_days: list[int],
     eat_out_days: list[int],
     mode: str = "mix",
+    protein_inventory: list[dict] | None = None,
 ) -> str:
     gym_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in gym_days]
     eat_out_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in eat_out_days]
 
-    if mode == "safe":
+    if mode == "on_hand":
+        mode_instruction = (
+            "SELECTION STYLE — On Hand Only: ONLY suggest meals where the required "
+            "ingredients are currently available. For frozen meals (type='frozen'), "
+            "only suggest them if frozen_quantity > 0. For home-cooked meals, only "
+            "suggest them if the required protein is in stock — the PROTEIN INVENTORY "
+            "below shows current stock, and each meal's protein_servings shows how many "
+            "servings it needs. If there is not enough protein for a meal, do NOT "
+            "suggest it. Meals with no protein set can always be suggested. "
+            "If no meals are available for a night, set day_type to 'skip' "
+            "with a note explaining nothing is in stock. Still apply gym-night and "
+            "eat-out constraints as usual."
+        )
+    elif mode == "safe":
         mode_instruction = (
             "SELECTION STYLE — Play It Safe: treat meal selection like a weighted lottery "
             "that favours proven household favourites. Meals with usage_count ≥ 5 get 3× "
@@ -156,6 +180,9 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
   ...
 ]
 """
+    if protein_inventory:
+        prompt += f"\nPROTEIN INVENTORY (what's currently in stock):\n{json.dumps(protein_inventory, indent=2)}\n"
+
     return prompt
 
 
@@ -263,9 +290,11 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         )
 
     history = _get_history(db, payload.week_start)
+    protein_inv = _get_protein_inventory(db) if payload.mode == "on_hand" else None
     prompt = _build_prompt(
         payload.week_start, library, history, settings["gym_days"], settings["eat_out_days"],
         mode=payload.mode,
+        protein_inventory=protein_inv,
     )
 
     configured, reason = _check_configured(provider)
