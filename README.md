@@ -22,6 +22,7 @@ Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 - **Gym nights** — configure which nights you go to the gym; AI will prefer easy-to-make meals on those nights
 - **📌 Carry-forward** — pin any day so its meal copies to the same day next week automatically
 - **Past weeks** — browse previous plans to jog your memory
+- **Database backups** — automatic pre-migration and weekly backups (5-week retention); manual export via `POST /api/backup`
 - **Offline-capable** — Alpine.js and Tailwind CSS are vendored into the Docker image at build time; no CDN or internet access required at runtime
 
 ---
@@ -169,7 +170,7 @@ whats-for-dinner/
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
 │       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
-├── tests/                # pytest suite (139 tests, in-memory SQLite)
+├── tests/                # pytest suite (142 tests, in-memory SQLite)
 │   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
 ├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
@@ -218,7 +219,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 139 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 142 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

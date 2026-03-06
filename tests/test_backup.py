@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
-from app.database import backup_db, BACKUP_DIR
+from app.database import backup_db, _weekly_backup, BACKUP_DIR
 
 
 def _create_test_db(path):
@@ -85,3 +85,54 @@ def test_backup_api_download_rejects_non_dinner_prefix(client, tmp_path):
     with patch("app.routers.backup.BACKUP_DIR", backup_dir):
         r = client.get("/api/backup/download/evil.db")
     assert r.status_code == 404
+
+
+def test_weekly_backup_creates_file(tmp_path):
+    """_weekly_backup creates one backup per calendar week."""
+    src = tmp_path / "test.db"
+    _create_test_db(src)
+    backup_dir = tmp_path / "backups"
+
+    with patch("app.database.DB_PATH", str(src)), \
+         patch("app.database.BACKUP_DIR", backup_dir), \
+         patch("app.database.MAX_BACKUPS", 5):
+        _weekly_backup()
+
+    weeklies = list(backup_dir.glob("dinner_weekly_*.db"))
+    assert len(weeklies) == 1
+
+
+def test_weekly_backup_skips_if_already_exists(tmp_path):
+    """_weekly_backup does not create a second backup in the same week."""
+    src = tmp_path / "test.db"
+    _create_test_db(src)
+    backup_dir = tmp_path / "backups"
+
+    with patch("app.database.DB_PATH", str(src)), \
+         patch("app.database.BACKUP_DIR", backup_dir), \
+         patch("app.database.MAX_BACKUPS", 5):
+        _weekly_backup()
+        _weekly_backup()  # should be a no-op
+
+    weeklies = list(backup_dir.glob("dinner_weekly_*.db"))
+    assert len(weeklies) == 1
+
+
+def test_weekly_backup_prunes_old_weeks(tmp_path):
+    """_weekly_backup keeps only MAX_BACKUPS weekly backups."""
+    src = tmp_path / "test.db"
+    _create_test_db(src)
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir(parents=True)
+
+    # Create 6 fake weekly backups from different weeks
+    for i in range(6):
+        (backup_dir / f"dinner_weekly_2026_W{i:02d}_20260101_000000_000000.db").write_bytes(b"x")
+
+    with patch("app.database.DB_PATH", str(src)), \
+         patch("app.database.BACKUP_DIR", backup_dir), \
+         patch("app.database.MAX_BACKUPS", 5):
+        _weekly_backup()  # creates a 7th, should prune to 5
+
+    weeklies = list(backup_dir.glob("dinner_weekly_*.db"))
+    assert len(weeklies) == 5

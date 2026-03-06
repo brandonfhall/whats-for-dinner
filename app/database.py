@@ -66,6 +66,41 @@ def backup_db(reason: str = "manual") -> Path | None:
     return dest
 
 
+def _weekly_backup():
+    """Create a weekly backup if one doesn't exist for the current week.
+
+    Uses ISO week number so at most one backup is created per calendar week.
+    Keeps the last 5 weekly backups across all weeks.
+    """
+    src = Path(DB_PATH)
+    if not src.exists():
+        return
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    week_label = datetime.now(timezone.utc).strftime("%Y_W%W")
+    existing = list(BACKUP_DIR.glob(f"dinner_weekly_{week_label}_*.db"))
+    if existing:
+        return  # Already backed up this week
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+    dest = BACKUP_DIR / f"dinner_weekly_{week_label}_{ts}.db"
+
+    src_conn = sqlite3.connect(src)
+    dst_conn = sqlite3.connect(dest)
+    try:
+        src_conn.backup(dst_conn)
+    finally:
+        dst_conn.close()
+        src_conn.close()
+
+    logger.info("Weekly backup created | %s", dest.name)
+
+    # Prune weekly backups to keep the last 5
+    weeklies = sorted(BACKUP_DIR.glob("dinner_weekly_*.db"), key=lambda p: p.name)
+    for old in weeklies[:-MAX_BACKUPS]:
+        old.unlink()
+        logger.info("Pruned old weekly backup | %s", old.name)
+
+
 def _run_migrations():
     """Add new columns to existing tables without dropping data."""
     with engine.connect() as conn:
@@ -231,3 +266,4 @@ def init_db():
     _run_migrations()
     _add_check_constraints()
     _seed_proteins()
+    _weekly_backup()
