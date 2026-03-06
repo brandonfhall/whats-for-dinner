@@ -29,7 +29,9 @@ def create_protein(payload: ProteinInventoryCreate, db: Session = Depends(get_db
     )
     if existing:
         raise HTTPException(status_code=409, detail="Protein already exists")
-    entry = ProteinInventory(**payload.model_dump())
+    data = payload.model_dump()
+    data["quantity"] = max(0, data.get("quantity", 0))
+    entry = ProteinInventory(**data)
     db.add(entry)
     db.commit()
     db.refresh(entry)
@@ -51,6 +53,8 @@ def update_protein(
     if not entry:
         raise HTTPException(status_code=404, detail="Protein not found")
     for field, value in payload.model_dump(exclude_none=True).items():
+        if field == "quantity" and value is not None:
+            value = max(0, value)
         setattr(entry, field, value)
     db.commit()
     db.refresh(entry)

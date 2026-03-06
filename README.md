@@ -168,7 +168,7 @@ whats-for-dinner/
 │   ├── app.js            # All Alpine.js frontend logic
 │   └── css/
 │       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
-├── tests/                # pytest suite (123 tests, in-memory SQLite)
+├── tests/                # pytest suite (129 tests, in-memory SQLite)
 │   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
 ├── data/                 # SQLite db lives here (volume-mounted, gitignored)
 ├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
@@ -213,7 +213,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 123 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 129 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

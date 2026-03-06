@@ -274,3 +274,31 @@ def test_update_protein_servings(client):
     })
     assert r.status_code == 200
     assert r.json()["protein_servings"] == 3
+
+
+def test_create_meal_negative_frozen_quantity_floors_at_zero(client):
+    meal = create_meal(client, "Bad Frozen", meal_type="frozen", frozen_quantity=-5)
+    assert meal["frozen_quantity"] == 0
+
+
+def test_create_meal_negative_protein_servings_floors_at_zero(client):
+    meal = create_meal(client, "Bad Servings", protein_servings=-2)
+    assert meal["protein_servings"] == 0
+
+
+def test_update_meal_negative_frozen_quantity_floors_at_zero(client):
+    meal = create_meal(client, "Lasagna", meal_type="frozen")
+    r = client.put(f"/api/meals/{meal['id']}", json={
+        **MEAL_DEFAULTS, "name": "Lasagna", "meal_type": "frozen", "frozen_quantity": -10,
+    })
+    assert r.status_code == 200
+    assert r.json()["frozen_quantity"] == 0
+
+
+def test_update_meal_negative_protein_servings_floors_at_zero(client):
+    meal = create_meal(client, "Curry")
+    r = client.put(f"/api/meals/{meal['id']}", json={
+        **MEAL_DEFAULTS, "name": "Curry", "protein_servings": -3,
+    })
+    assert r.status_code == 200
+    assert r.json()["protein_servings"] == 0

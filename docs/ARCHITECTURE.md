@@ -196,6 +196,8 @@ Household meal planning web application for two people. Single-container Docker 
 - Migrations via PRAGMA table_info checks (no Alembic)
 - Real IP detection for Traefik (X-Real-IP, X-Forwarded-For)
 - Frozen meals use `meal_type=frozen` with `frozen_quantity` on the meal itself
+- Frozen meals have no protein selection or protein servings (they're self-contained)
 - Protein inventory is a separate global table shared across all meals
 - Shopping list computed on-the-fly (not persisted)
 - Protein seed data auto-populated on first startup if table is empty
+- Non-negative quantities enforced at both code layer (`max(0, ...)`) and DB layer (`CHECK` constraints) for `frozen_quantity`, `protein_servings`, and `protein_inventory.quantity`

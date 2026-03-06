@@ -1,6 +1,7 @@
 from datetime import datetime, date, timezone
 from sqlalchemy import (
-    Integer, String, Boolean, Date, DateTime, Float, ForeignKey, Enum as SAEnum
+    Integer, String, Boolean, Date, DateTime, Float, ForeignKey, Enum as SAEnum,
+    CheckConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
@@ -44,6 +45,11 @@ class Meal(Base):
     protein_servings: Mapped[int] = mapped_column(Integer, default=1)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        CheckConstraint("frozen_quantity >= 0", name="ck_meals_frozen_quantity_nonneg"),
+        CheckConstraint("protein_servings >= 0", name="ck_meals_protein_servings_nonneg"),
+    )
 
     plan_days: Mapped[list["PlanDay"]] = relationship("PlanDay", back_populates="meal")
 
@@ -89,6 +95,10 @@ class ProteinInventory(Base):
     group: Mapped[str] = mapped_column(String, default="meat")
     quantity: Mapped[float] = mapped_column(Float, default=0)
     unit: Mapped[str] = mapped_column(String, default="servings")
+
+    __table_args__ = (
+        CheckConstraint("quantity >= 0", name="ck_protein_inventory_quantity_nonneg"),
+    )
 
 
 class Setting(Base):
