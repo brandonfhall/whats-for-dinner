@@ -63,6 +63,7 @@ function app() {
     editingMeal: null,
     mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '', frozen_quantity: 0, protein_servings: 1 },
     mealSearch: '',
+    mealTypeFilter: '',
     mealSaving: false,
     proteinInventory: [],
     cuisines: CUISINES,
@@ -244,7 +245,20 @@ function app() {
     // ── Meal helpers ─────────────────────────────────────────
     filteredMeals() {
       const q = this.mealSearch.toLowerCase();
-      return this.meals.filter(m => !q || m.name.toLowerCase().includes(q));
+      const t = this.mealTypeFilter;
+      return this.meals.filter(m =>
+        (!q || m.name.toLowerCase().includes(q)) &&
+        (!t || m.meal_type === t)
+      );
+    },
+
+    mealCardClass(type) {
+      return {
+        home_cooked: 'border-green-300',
+        eat_out:     'border-blue-300',
+        frozen:      'border-cyan-300',
+        other:       'border-gray-200',
+      }[type] || 'border-gray-200';
     },
 
     filteredPickerMeals() {

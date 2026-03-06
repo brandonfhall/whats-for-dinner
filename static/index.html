@@ -205,7 +205,7 @@
         </button>
       </div>
 
-      <div class="mb-4">
+      <div class="mb-3">
         <input
           x-model="mealSearch"
           type="text"
@@ -214,9 +214,20 @@
         />
       </div>
 
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <template x-for="opt in [{v:'',l:'All'},{v:'home_cooked',l:'Home cooked'},{v:'eat_out',l:'Eat out'},{v:'frozen',l:'Frozen'}]" :key="opt.v">
+          <button
+            @click="mealTypeFilter = opt.v"
+            :class="mealTypeFilter === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+            class="px-3 py-1.5 rounded-full border text-sm font-medium transition-colors"
+            x-text="opt.l"
+          ></button>
+        </template>
+      </div>
+
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <template x-for="meal in filteredMeals()" :key="meal.id">
-          <div class="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+          <div class="bg-white rounded-xl border-2 p-4 hover:shadow-sm transition-shadow" :class="mealCardClass(meal.meal_type)">
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
                 <p class="font-semibold text-gray-800 truncate" x-text="meal.name"></p>
