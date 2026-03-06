@@ -126,3 +126,6 @@ docker compose -f docker-compose.local.yml up --build
 5. **Tests**: Add tests following existing patterns, run full suite to verify no regressions
 6. **Tailwind classes**: If using new Tailwind classes not already in the HTML, they may need to be added to the safelist in `static/css/input.css`
 7. **Documentation**: Update `docs/ARCHITECTURE.md` (schema, endpoints, features), `README.md` (features, API, project layout), and `DOCKERHUB.md` (features list) to reflect the changes
+8. **Commit messages**: Use clear, descriptive commit messages that explain the "why" behind changes, not just the "what" (e.g., "Add frozen quantity field to meals for better inventory tracking" instead of "Add frozen_quantity column")
+9. **Code style**: Follow existing code style and conventions for consistency, even if they differ from your personal preferences
+10. **All new commits should be made on a feature branch. ***Never commit directly to main. Use descriptive branch names (e.g., `feature/add-ai-prompt-templates`, `bugfix/fix-meal-update-quantity-floor`)
