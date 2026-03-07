@@ -95,9 +95,9 @@ Household meal planning web application for two people. Single-container Docker 
 | id            | INTEGER | PK      |                                  |
 | plan_id       | INTEGER | FK      | -> weekly_plans.id               |
 | day_of_week   | INTEGER | required | 0=Sun, 1=Mon, ..., 6=Sat       |
-| day_type      | TEXT    | skip    | home_cooked / eat_out / skip     |
-| meal_id       | INTEGER | nullable | -> meals.id (for home_cooked)   |
-| custom_name   | TEXT    | ""      | Restaurant name for eat_out      |
+| day_type      | TEXT    | skip    | home_cooked / eat_out / skip (UI: "Other") |
+| meal_id       | INTEGER | nullable | -> meals.id (for home_cooked)             |
+| custom_name   | TEXT    | ""      | Restaurant name for eat_out; optional note for skip |
 | notes         | TEXT    | ""      |                                  |
 | carry_forward | BOOL   | false   | Copy to next week if unplanned   |
 
@@ -177,7 +177,7 @@ Household meal planning web application for two people. Single-container Docker 
 1. **Meal Library**: CRUD for meals with type (home_cooked, eat_out, other, frozen), protein, cuisine, tags (easy, leftovers), recipe URLs
 2. **Frozen Meal Inventory**: Track frozen meal prep portions with +/- quantity controls in library and editor
 3. **Protein Inventory**: Database-driven protein categories (seeded with 14 defaults) with stock tracking per protein type
-4. **Weekly Planning**: 7-day grid (Sun-Sat), day editor with meal picker (includes frozen meals), carry-forward
+4. **Weekly Planning**: 7-day grid (Sun-Sat), day editor with meal picker (includes frozen meals), carry-forward; days can be home-cooked, eat out, frozen, or Other (with optional free-text note displayed on the calendar)
 5. **AI Suggestions**: Three modes:
    - "Mix it up" - favor less-used meals
    - "Play it safe" - favor favorites

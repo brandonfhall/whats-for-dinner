@@ -13,7 +13,7 @@ Designed for home networks — no auth, no cloud, no fuss.
 - **Meal library** — name, type, protein, cuisine, recipe link, notes, ⚡ easy-to-make, 📦 has-leftovers
 - **Frozen meal inventory** — track homemade frozen meal prep portions with +/- quantity controls
 - **Protein inventory** — database-driven protein stock tracking (14 defaults auto-seeded); monitor what's on hand
-- **Weekly planner** — 7-day dinner grid; set each day to home-cooked, frozen, eat out, or unplanned
+- **Weekly planner** — 7-day dinner grid; set each day to home-cooked, frozen, eat out, or other (with optional note)
 - **Shopping list** — read-only view comparing planned meal needs vs current inventory
 - **AI suggestions** — Claude or GPT-4o drafts the week from your library and history; three modes: 🎲 Mix it up / 🛡️ Play it safe / 📦 On hand (only meals with available stock)
 - **Gym nights** — AI prefers easy meals on nights you configure as gym nights
