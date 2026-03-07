@@ -232,6 +232,7 @@ function app() {
       const bg = isGym ? 'bg-yellow-50' : '';
       if (day.day_type === 'home_cooked') return `border-green-300 ${bg}`;
       if (day.day_type === 'eat_out') return `border-blue-300 ${bg}`;
+      if (day.day_type === 'skip' && day.custom_name) return `border-orange-300 ${bg}`;
       return isGym ? `border-yellow-200 ${bg}` : 'border-gray-200 opacity-60';
     },
 
@@ -239,6 +240,7 @@ function app() {
       if (!day) return '—';
       if (day.day_type === 'home_cooked') return day.meal ? day.meal.name : 'Home cooked';
       if (day.day_type === 'eat_out') return day.custom_name || 'Eat out';
+      if (day.day_type === 'skip') return day.custom_name || '—';
       return '—';
     },
 
@@ -257,7 +259,7 @@ function app() {
         home_cooked: 'border-green-300',
         eat_out:     'border-blue-300',
         frozen:      'border-cyan-300',
-        other:       'border-gray-200',
+        other:       'border-orange-300',
       }[type] || 'border-gray-200';
     },
 
@@ -280,7 +282,7 @@ function app() {
       return {
         home_cooked: 'bg-green-100 text-green-700',
         eat_out: 'bg-blue-100 text-blue-700',
-        other: 'bg-gray-100 text-gray-600',
+        other: 'bg-orange-100 text-orange-700',
         frozen: 'bg-cyan-100 text-cyan-700',
       }[t] || 'bg-gray-100 text-gray-600';
     },
@@ -298,6 +300,13 @@ function app() {
     },
 
     // ── Day editor ──────────────────────────────────────────
+    setEditDayType(v) {
+      if (this.editDayForm.day_type !== v) {
+        this.editDayForm.custom_name = '';
+      }
+      this.editDayForm.day_type = v;
+    },
+
     openDayEditor(day) {
       this.editingDay = day;
       this.mealPickerSearch = '';
