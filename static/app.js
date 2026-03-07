@@ -21,7 +21,7 @@ function app() {
       { id: 'library',   label: "Meal Library", short: "Library" },
       { id: 'inventory', label: "Inventory",    short: "Inv." },
       { id: 'month',     label: "Month View",   short: "Month" },
-      { id: 'settings',  label: "Settings",     short: "⚙️" },
+      { id: 'settings',  label: "Settings",     short: "⚙️", icon: "/static/assets/settings_icon_transparent.png" },
     ],
     activeTab: 'week',
 
