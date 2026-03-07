@@ -704,7 +704,7 @@ AI_API_KEY=sk-ant-...</pre>
           </div>
         </div>
 
-        <div x-show="mealForm.meal_type !== 'frozen'">
+        <div x-show="mealForm.meal_type === 'home_cooked' || mealForm.meal_type === 'other'">
           <label class="block text-sm font-medium text-gray-700 mb-2">Protein</label>
           <div class="flex flex-wrap gap-1.5">
             <button
