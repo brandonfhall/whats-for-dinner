@@ -168,7 +168,7 @@
               <p class="font-semibold text-gray-700 text-sm" x-text="day.custom_name || 'Eating out'"></p>
             </template>
             <template x-if="day.day_type === 'skip'">
-              <p class="text-gray-400 text-sm italic">Not planned</p>
+              <p class="text-sm" :class="day.custom_name ? 'text-gray-700 font-semibold' : 'text-gray-400 italic'" x-text="day.custom_name || 'Other'"></p>
             </template>
             <template x-if="day.day_type === 'home_cooked' && !day.meal">
               <p class="text-gray-400 text-sm italic">Pick a meal…</p>
@@ -532,9 +532,9 @@ AI_API_KEY=sk-ant-...</pre>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Evening type</label>
           <div class="flex gap-2">
-            <template x-for="opt in [{v:'home_cooked',l:'Home cooked',c:'green'},{v:'eat_out',l:'Eat out',c:'blue'},{v:'skip',l:'No plan',c:'gray'}]" :key="opt.v">
+            <template x-for="opt in [{v:'home_cooked',l:'Home cooked',c:'green'},{v:'eat_out',l:'Eat out',c:'blue'},{v:'skip',l:'Other',c:'orange'}]" :key="opt.v">
               <button
-                @click="editDayForm.day_type = opt.v"
+                @click="setEditDayType(opt.v)"
                 :class="editDayForm.day_type === opt.v ? `bg-${opt.c}-600 text-white border-${opt.c}-600` : 'bg-white text-gray-600 border-gray-300'"
                 class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
                 x-text="opt.l"
@@ -574,6 +574,17 @@ AI_API_KEY=sk-ant-...</pre>
             </template>
             <div x-show="filteredPickerMeals().length === 0" class="px-3 py-4 text-sm text-gray-400 text-center">No meals found</div>
           </div>
+        </div>
+
+        <!-- Custom description (other/skip) -->
+        <div x-show="editDayForm.day_type === 'skip'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">What's happening? <span class="font-normal text-gray-400">(optional)</span></label>
+          <input
+            x-model="editDayForm.custom_name"
+            type="text"
+            placeholder="e.g. Leftovers, Fasting, Travel…"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          />
         </div>
 
         <!-- Custom name (eat_out) -->

@@ -13,4 +13,4 @@
 /* Force-include dynamically constructed classes.
    index.html builds `bg-${opt.c}-600` and `border-${opt.c}-600` at runtime
    where opt.c ∈ green | blue | gray — the scanner can't detect these statically. */
-@source inline("bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600");
+@source inline("bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600 bg-orange-600 border-orange-600");
