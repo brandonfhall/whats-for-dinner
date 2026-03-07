@@ -147,6 +147,8 @@ class ProteinInventoryCreate(BaseModel):
 
 class ProteinInventoryUpdate(BaseModel):
     display_name: Optional[str] = None
+    emoji: Optional[str] = None
+    group: Optional[str] = None
     quantity: Optional[float] = None
     unit: Optional[str] = None
 

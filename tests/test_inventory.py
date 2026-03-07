@@ -94,3 +94,26 @@ def test_update_protein_negative_quantity_floors_at_zero(client):
     r = client.put("/api/inventory/proteins/Elk", json={"quantity": -3})
     assert r.status_code == 200
     assert r.json()["quantity"] == 0
+
+
+def test_update_protein_emoji(client):
+    client.post("/api/inventory/proteins", json={"protein_name": "Steak", "display_name": "Steak", "emoji": "🟢", "group": "meat"})
+    r = client.put("/api/inventory/proteins/Steak", json={"emoji": "🥩"})
+    assert r.status_code == 200
+    assert r.json()["emoji"] == "🥩"
+
+
+def test_update_protein_group(client):
+    client.post("/api/inventory/proteins", json={"protein_name": "Tempeh", "display_name": "Tempeh", "group": "meat"})
+    r = client.put("/api/inventory/proteins/Tempeh", json={"group": "veg"})
+    assert r.status_code == 200
+    assert r.json()["group"] == "veg"
+
+
+def test_update_protein_emoji_and_group_together(client):
+    client.post("/api/inventory/proteins", json={"protein_name": "Tofu2", "display_name": "Tofu", "emoji": "❓", "group": "meat"})
+    r = client.put("/api/inventory/proteins/Tofu2", json={"emoji": "🫘", "group": "veg"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["emoji"] == "🫘"
+    assert data["group"] == "veg"

@@ -73,6 +73,8 @@ function app() {
     shoppingListLoading: false,
     addProteinForm: { protein_name: '', display_name: '', emoji: '', group: 'meat', unit: 'servings' },
     addProteinOpen: false,
+    editProteinName: null,
+    editProteinForm: { emoji: '', group: 'meat' },
 
     // ── Month view ──────────────────────────────────────────
     monthYear: new Date().getFullYear(),
@@ -549,6 +551,22 @@ function app() {
         this.addProteinOpen = false;
       } catch (e) {
         alert('Failed to add: ' + e.message);
+      }
+    },
+
+    openEditProtein(p) {
+      this.editProteinName = p.protein_name;
+      this.editProteinForm = { emoji: p.emoji, group: p.group };
+    },
+
+    async saveEditProtein() {
+      try {
+        const updated = await this.api('PUT', `/inventory/proteins/${encodeURIComponent(this.editProteinName)}`, this.editProteinForm);
+        const idx = this.proteinInventory.findIndex(p => p.protein_name === this.editProteinName);
+        if (idx >= 0) this.proteinInventory[idx] = updated;
+        this.editProteinName = null;
+      } catch (e) {
+        alert('Failed to save: ' + e.message);
       }
     },
 
