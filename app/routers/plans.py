@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models import WeeklyPlan, PlanDay, DayType, PlanStatus, Meal, MealType, ProteinInventory
 from app.schemas import (
     WeeklyPlanCreate, WeeklyPlanOut, WeeklyPlanSummary, WeeklyPlanNotesUpdate,
-    PlanDayUpdate, PlanDayOut, ShoppingListOut, ShoppingListItem,
+    PlanDayUpdate, PlanDayOut, ShoppingListOut, ShoppingListItem, TodayDinnerOut,
 )
 from app.routers.settings import get_all_settings
 
@@ -121,6 +121,62 @@ def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
     if db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first():
         raise HTTPException(status_code=409, detail="A plan for that week already exists")
     return _get_or_create_plan(week_start, db)
+
+
+@router.get("/today", response_model=TodayDinnerOut)
+def get_today_dinner(db: Session = Depends(get_db)):
+    today = date.today()
+    dow = (today.weekday() + 1) % 7  # Python Mon=0; convert to Sun=0
+    plan = _get_or_create_plan(_sunday_of(today), db)
+
+    day = next((d for d in plan.days if d.day_of_week == dow), None)
+
+    if day is None or day.day_type == DayType.skip:
+        return TodayDinnerOut(
+            day_of_week=dow,
+            day_name=DAY_NAMES[dow],
+            dinner="None",
+            detail="No dinner planned for tonight.",
+            day_type="skip",
+        )
+
+    if day.day_type == DayType.eat_out:
+        place = day.custom_name or (day.meal.name if day.meal else "")
+        place = place or "out"
+        dinner = place
+        detail = f"Tonight you're eating out at {place}." if place != "out" else "Tonight you're eating out."
+        return TodayDinnerOut(
+            day_of_week=dow,
+            day_name=DAY_NAMES[dow],
+            dinner=dinner,
+            detail=detail,
+            day_type="eat_out",
+        )
+
+    # home_cooked
+    meal = day.meal
+    if not meal and not day.custom_name:
+        return TodayDinnerOut(
+            day_of_week=dow,
+            day_name=DAY_NAMES[dow],
+            dinner="Unknown",
+            detail="Tonight's dinner hasn't been planned yet.",
+            day_type="home_cooked",
+        )
+
+    name = (meal.name if meal else None) or day.custom_name
+    if meal and meal.protein:
+        detail = f"Tonight is {name} (home cooked, {meal.protein.lower()} protein)."
+    else:
+        detail = f"Tonight is {name} (home cooked)."
+
+    return TodayDinnerOut(
+        day_of_week=dow,
+        day_name=DAY_NAMES[dow],
+        dinner=name,
+        detail=detail,
+        day_type="home_cooked",
+    )
 
 
 @router.get("/{plan_id}", response_model=WeeklyPlanOut)

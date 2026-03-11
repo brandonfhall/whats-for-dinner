@@ -1,6 +1,7 @@
 """Tests for weekly plan creation, week navigation, and carry-forward logic."""
 
 from datetime import date, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -507,3 +508,75 @@ def test_shopping_list_frozen_needs(client):
 def test_shopping_list_not_found(client):
     r = client.get("/api/plans/99999/shopping-list")
     assert r.status_code == 404
+
+
+# ── /today endpoint ───────────────────────────────────────────────────────────
+
+# Fix today to a known Wednesday (dow=3 in Sun=0 scheme)
+_FIXED_TODAY = date(2026, 3, 4)  # Wednesday
+_FIXED_DOW = 3  # Wednesday in Sun=0 scheme
+
+
+def test_today_unplanned_returns_not_planned(client):
+    """When today's day is skip (default), detail says not planned yet."""
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["day_of_week"] == _FIXED_DOW
+    assert data["day_name"] == "Wednesday"
+    assert data["day_type"] == "skip"
+    assert "planned" in data["detail"].lower()
+
+
+def test_today_home_cooked_with_meal(client, meals):
+    """When today is home_cooked with a meal, detail names the meal."""
+    # Get the plan for the fixed week and set Wednesday
+    fixed_plan = client.get(f"/api/plans/week/{_FIXED_TODAY.isoformat()}").json()
+    client.put(f"/api/plans/{fixed_plan['id']}/days/{_FIXED_DOW}", json={
+        "day_type": "home_cooked", "meal_id": meals[1]["id"],  # Beef Tacos
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["day_type"] == "home_cooked"
+    assert data["dinner"] == "Beef Tacos"
+    assert "Beef Tacos" in data["detail"]
+    assert "beef" in data["detail"].lower()
+
+
+def test_today_eat_out_with_custom_name(client):
+    """When today is eat_out with a custom name, detail mentions the place."""
+    fixed_plan = client.get(f"/api/plans/week/{_FIXED_TODAY.isoformat()}").json()
+    client.put(f"/api/plans/{fixed_plan['id']}/days/{_FIXED_DOW}", json={
+        "day_type": "eat_out", "meal_id": None,
+        "custom_name": "Chipotle", "notes": "", "carry_forward": False,
+    })
+
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["day_type"] == "eat_out"
+    assert "Chipotle" in data["detail"]
+
+
+def test_today_response_has_required_fields(client):
+    """Response always includes all required schema fields."""
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    for field in ("day_of_week", "day_name", "dinner", "detail", "day_type"):
+        assert field in data

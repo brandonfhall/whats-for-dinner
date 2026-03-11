@@ -192,6 +192,7 @@ PUT    /api/meals/{id}                         Update a meal
 PATCH  /api/meals/{id}/frozen-quantity?delta=N  Adjust frozen inventory count
 
 GET    /api/plans/current                      Get (or create) this week's plan
+GET    /api/plans/today                        Tonight's dinner as a natural-language string
 PUT    /api/plans/{id}/days/{0-6}              Update a single day in a plan
 PUT    /api/plans/{id}/notes                   Update week-level notes
 GET    /api/plans/{id}/shopping-list           Generate shopping list vs inventory
