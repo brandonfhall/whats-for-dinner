@@ -135,6 +135,7 @@ Household meal planning web application for two people. Single-container Docker 
 |--------|------------------------------|--------------------------------|
 | GET    | /                            | List all plans (summary)       |
 | GET    | /current                     | Get/create current week plan   |
+| GET    | /today                       | Get tonight's dinner as natural-language string |
 | GET    | /week/{week_start}           | Get/create plan for week       |
 | POST   | /                            | Create plan                    |
 | GET    | /{plan_id}                   | Get plan with days             |
