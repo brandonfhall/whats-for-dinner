@@ -165,6 +165,16 @@ class ProteinInventoryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Today's Dinner ───────────────────────────────────────────────────────────
+
+class TodayDinnerOut(BaseModel):
+    day_of_week: int
+    day_name: str
+    dinner: str
+    detail: str
+    day_type: str
+
+
 # ── Shopping List ────────────────────────────────────────────────────────────
 
 class ShoppingListItem(BaseModel):
