@@ -411,6 +411,116 @@ def test_build_prompt_omits_week_context_when_none():
     assert "CURRENT WEEK CONTEXT" not in prompt
 
 
+def test_generate_prefixes_ai_notes(client, meals):
+    """AI-generated notes should be prefixed with 'AI - '."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = [
+        {
+            "day_of_week": i,
+            "day_type": "home_cooked",
+            "meal_id": meals[0]["id"],
+            "meal_name": meals[0]["name"],
+            "custom_name": "",
+            "notes": "Great with rice" if i == 0 else "",
+        }
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    day0 = [s for s in r.json()["suggestions"] if s["day_of_week"] == 0][0]
+    assert day0["notes"] == "AI - Great with rice"
+    # Days with no AI notes should have empty notes
+    day1 = [s for s in r.json()["suggestions"] if s["day_of_week"] == 1][0]
+    assert day1["notes"] == ""
+
+
+def test_generate_preserves_existing_notes(client, meals):
+    """Existing day notes must be preserved; AI notes appended on a new line."""
+    plan = client.get("/api/plans/current").json()
+    # Set an existing note on Sunday (day 0)
+    client.put(f"/api/plans/{plan['id']}/days/0", json={
+        "day_type": "home_cooked",
+        "meal_id": meals[0]["id"],
+        "notes": "User note here",
+    })
+
+    suggestions = [
+        {
+            "day_of_week": i,
+            "day_type": "home_cooked",
+            "meal_id": meals[0]["id"],
+            "meal_name": meals[0]["name"],
+            "custom_name": "",
+            "notes": "Pairs well with salad" if i == 0 else "",
+        }
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    day0 = [s for s in r.json()["suggestions"] if s["day_of_week"] == 0][0]
+    assert "User note here" in day0["notes"]
+    assert "AI - Pairs well with salad" in day0["notes"]
+    assert day0["notes"] == "User note here\nAI - Pairs well with salad"
+
+
+def test_generate_keeps_existing_notes_when_ai_has_none(client, meals):
+    """When AI returns empty notes, existing day notes should not be erased."""
+    plan = client.get("/api/plans/current").json()
+    client.put(f"/api/plans/{plan['id']}/days/2", json={
+        "day_type": "home_cooked",
+        "meal_id": meals[0]["id"],
+        "notes": "Important user note",
+    })
+
+    suggestions = [
+        {
+            "day_of_week": i,
+            "day_type": "home_cooked",
+            "meal_id": meals[0]["id"],
+            "meal_name": meals[0]["name"],
+            "custom_name": "",
+            "notes": "",
+        }
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    day2 = [s for s in r.json()["suggestions"] if s["day_of_week"] == 2][0]
+    assert day2["notes"] == "Important user note"
+
+
+def test_build_prompt_instructs_ai_not_to_repeat_notes():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+    )
+    assert "Do NOT repeat any existing day notes" in prompt
+
+
 def test_generate_on_hand_mode_mocked(client, meals):
     """Full generate flow with on_hand mode using mocked AI."""
     plan = client.get("/api/plans/current").json()
