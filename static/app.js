@@ -30,7 +30,7 @@ function app() {
     thisWeekStart: null,   // the actual current week's Sunday (for "Today" button)
     pastPlans: [],
     meals: [],
-    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic' },
+    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic', custom_instructions: '' },
 
     // ── Week notes ──────────────────────────────────────────
     weekNotes: '',
@@ -609,6 +609,7 @@ function app() {
         this.settings = await this.api('PUT', '/settings', {
           gym_days: this.settings.gym_days,
           eat_out_days: this.settings.eat_out_days,
+          custom_instructions: this.settings.custom_instructions,
         });
         this.settingsSaved = true;
         setTimeout(() => { this.settingsSaved = false; }, 3000);

@@ -342,6 +342,75 @@ def test_build_prompt_on_hand_includes_frozen_quantity():
     assert "Frozen Chili" in prompt
 
 
+def test_build_prompt_includes_custom_instructions():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        custom_instructions="We prefer spicy food. Avoid dairy.",
+    )
+    assert "ADDITIONAL USER INSTRUCTIONS" in prompt
+    assert "We prefer spicy food. Avoid dairy." in prompt
+
+
+def test_build_prompt_omits_empty_custom_instructions():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        custom_instructions="",
+    )
+    assert "ADDITIONAL USER INSTRUCTIONS" not in prompt
+
+
+def test_build_prompt_omits_whitespace_only_custom_instructions():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        custom_instructions="   ",
+    )
+    assert "ADDITIONAL USER INSTRUCTIONS" not in prompt
+
+
+def test_build_prompt_includes_current_week_context():
+    context = {
+        "week_notes": "Guests visiting Thursday",
+        "day_notes": [
+            {"day": "Monday", "notes": "Use up leftover chicken"},
+        ],
+    }
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        current_week_context=context,
+    )
+    assert "CURRENT WEEK CONTEXT" in prompt
+    assert "Guests visiting Thursday" in prompt
+    assert "Monday: Use up leftover chicken" in prompt
+
+
+def test_build_prompt_omits_week_context_when_none():
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[],
+        eat_out_days=[],
+        current_week_context=None,
+    )
+    assert "CURRENT WEEK CONTEXT" not in prompt
+
+
 def test_generate_on_hand_mode_mocked(client, meals):
     """Full generate flow with on_hand mode using mocked AI."""
     plan = client.get("/api/plans/current").json()

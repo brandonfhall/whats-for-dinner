@@ -15,6 +15,7 @@ DEFAULTS = {
     "gym_days": [],
     "eat_out_days": [],
     "ai_provider": "anthropic",
+    "custom_instructions": "",
 }
 
 

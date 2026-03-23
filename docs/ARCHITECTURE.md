@@ -115,7 +115,7 @@ Household meal planning web application for two people. Single-container Docker 
 ### settings
 | Column | Type | Notes                                    |
 |--------|------|------------------------------------------|
-| key    | TEXT | PK (gym_days, eat_out_days, ai_provider) |
+| key    | TEXT | PK (gym_days, eat_out_days, ai_provider, custom_instructions) |
 | value  | TEXT | JSON-encoded                             |
 
 ## API Endpoints
@@ -185,7 +185,7 @@ Household meal planning web application for two people. Single-container Docker 
    - "On hand" - only suggest meals with available protein/frozen stock
 6. **Shopping List**: Read-only list comparing plan needs vs inventory (protein stock + frozen meal count)
 7. **Month View**: Calendar overview, click to navigate to any week
-8. **Settings**: Gym days, eat-out days, AI provider selection
+8. **Settings**: Gym days, eat-out days, AI provider selection, custom AI instructions
 
 ## Frontend Structure
 
