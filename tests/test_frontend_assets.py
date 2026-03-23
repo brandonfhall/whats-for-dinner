@@ -16,26 +16,26 @@ ROOT = Path(__file__).parent.parent
 
 def test_index_html_no_tailwind_cdn():
     """index.html must not reference the Tailwind Play CDN."""
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert "cdn.tailwindcss.com" not in html
 
 
 def test_index_html_no_alpine_cdn():
     """index.html must not load Alpine.js from an external CDN."""
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert "jsdelivr.net" not in html
     assert "unpkg.com" not in html
 
 
 def test_index_html_links_local_tailwind_css():
     """index.html references the locally compiled Tailwind CSS file."""
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert "/static/css/tailwind.css" in html
 
 
 def test_index_html_links_local_alpine():
     """index.html loads Alpine.js from the vendored path."""
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert "/static/vendor/alpine.min.js" in html
 
 
@@ -48,7 +48,7 @@ def test_nav_logo_collapses_on_mobile():
 
     Without this the logo + 5 tabs overflow on 375px phones.
     """
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     # The logo area must hide full text on mobile and show only short form
     assert 'sm:hidden' in html, "Nav logo must have a sm:hidden short form for mobile"
     assert 'hidden sm:inline' in html, "Nav logo must have a hidden sm:inline full form for desktop"
@@ -59,7 +59,7 @@ def test_nav_settings_tab_short_label_is_compact():
 
     'Settings' as a short label overflows the nav bar on narrow phones.
     """
-    js = (ROOT / "static" / "app.js").read_text()
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
     # Find the settings tab definition and extract its short value
     match = re.search(r"id:\s*'settings'.*?short:\s*['\"](.+?)['\"]", js)
     assert match, "Could not find settings tab short label in app.js"
@@ -78,7 +78,7 @@ def test_meal_type_buttons_use_responsive_grid():
     Four flex-1 buttons in a row leave 'Home cooked' with only ~70px on mobile,
     too narrow to display legibly.
     """
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert 'grid-cols-2' in html, (
         "Meal editor type buttons must use grid-cols-2 for mobile layout. "
         "A plain flex row overflows on narrow screens."
@@ -91,7 +91,7 @@ def test_shopping_list_rows_stack_on_mobile():
     A single flex justify-between row with badge + name + need/have/buy
     overflows on narrow phone screens.
     """
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     assert 'flex-col sm:flex-row' in html, (
         "Shopping list rows must use flex-col sm:flex-row to stack on mobile. "
         "A plain flex justify-between row overflows on narrow screens."
@@ -100,7 +100,7 @@ def test_shopping_list_rows_stack_on_mobile():
 
 def test_filter_buttons_wrap_on_mobile():
     """Meal library filter pill buttons must be allowed to wrap on mobile."""
-    html = (ROOT / "static" / "index.html").read_text()
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     # The filter container should have flex-wrap (or flex flex-wrap or flex-wrap alone)
     assert 'flex-wrap' in html, (
         "Meal library filter buttons must use flex-wrap so they wrap on narrow screens."
@@ -114,7 +114,7 @@ def test_input_css_safelists_dynamic_classes():
     The Tailwind scanner cannot detect these statically, so they must appear
     in an @source inline() directive or they will be purged from the compiled CSS.
     """
-    config = (ROOT / "static" / "css" / "input.css").read_text()
+    config = (ROOT / "static" / "css" / "input.css").read_text(encoding="utf-8")
     required = [
         "bg-green-600", "border-green-600",
         "bg-blue-600",  "border-blue-600",

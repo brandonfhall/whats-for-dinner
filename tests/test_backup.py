@@ -1,8 +1,11 @@
 """Tests for the database backup functionality."""
 
 import sqlite3
+import sys
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from app.database import backup_db, _weekly_backup, BACKUP_DIR
 
@@ -98,6 +101,7 @@ def test_backup_api_list_returns_files(client, tmp_path):
     assert files[0]["size_bytes"] == 42
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks require elevated privileges on Windows")
 def test_backup_api_download_blocks_path_traversal(client, tmp_path):
     """A symlink inside BACKUP_DIR that points outside it is rejected with 400."""
     backup_dir = tmp_path / "backups"
