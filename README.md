@@ -20,6 +20,7 @@ Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 - **Shopping list** — read-only view comparing planned meal needs vs current inventory (protein stock + frozen meal count)
 - **AI suggestions** — Claude or GPT-4o drafts the week based on your history and library; three modes: 🎲 Mix it up (favour less-used meals), 🛡️ Play it safe (favour favourites), or 📦 On hand (only suggest meals with available protein/frozen stock)
 - **Custom AI instructions** — free-text field in Settings to give the AI additional context (dietary preferences, restrictions, cooking style); sent with every generation request
+- **AI notes** — AI-generated day notes are prefixed with "AI - " and appended to any existing notes rather than overwriting them
 - **Gym nights** — configure which nights you go to the gym; AI will prefer easy-to-make meals on those nights
 - **📌 Carry-forward** — pin any day so its meal copies to the same day next week automatically
 - **Past weeks** — browse previous plans to jog your memory
@@ -221,7 +222,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 170 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 176 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 

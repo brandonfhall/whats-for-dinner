@@ -113,6 +113,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - **AI is optional** — app works fully without any AI provider configured
 - **Custom AI instructions** — free-text setting (`custom_instructions`) appended to every AI prompt; stored in the settings key-value store
 - **Current week context in AI prompts** — when generating, the AI receives the current week's plan-level notes and any per-day notes (but NOT notes from previous weeks)
+- **AI notes prefixing** — AI-generated day notes are prefixed with "AI - " so users can distinguish them from their own notes; existing day notes are preserved and AI notes appended on a new line
 
 ## Key Files
 

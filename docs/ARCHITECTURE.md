@@ -184,6 +184,7 @@ Household meal planning web application for two people. Single-container Docker 
    - "Play it safe" - favor favorites
    - "On hand" - only suggest meals with available protein/frozen stock
    - Prompt includes full meal library, last 8 weeks of plans, gym/eat-out nights, custom instructions, and current week's plan-level notes and per-day notes (previous weeks' notes excluded)
+   - AI-generated day notes are prefixed with "AI - " and appended to existing notes rather than overwriting
 6. **Shopping List**: Read-only list comparing plan needs vs inventory (protein stock + frozen meal count)
 7. **Month View**: Calendar overview, click to navigate to any week
 8. **Settings**: Gym days, eat-out days, AI provider selection, custom AI instructions
