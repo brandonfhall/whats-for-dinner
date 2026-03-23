@@ -67,6 +67,20 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add defensive security headers to every response."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'"
+        )
+        return response
+
+
 class SubnetMiddleware(BaseHTTPMiddleware):
     """Block requests whose client IP is not in ALLOWED_SUBNETS (if set)."""
 
@@ -117,6 +131,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 _origins_env = os.getenv("ALLOWED_ORIGINS", "*")
 _origins = [o.strip() for o in _origins_env.split(",")] if _origins_env != "*" else ["*"]
 app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"])
+
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Subnet restriction
 app.add_middleware(SubnetMiddleware)

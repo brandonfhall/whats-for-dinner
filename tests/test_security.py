@@ -74,3 +74,24 @@ def test_access_log_skips_static_paths(client):
     with patch("app.main._access_log") as mock_log:
         client.get("/static/app.js")
     mock_log.log.assert_not_called()
+
+
+# ── SecurityHeadersMiddleware ─────────────────────────────────────────────────
+
+def test_security_headers_present(client):
+    """SecurityHeadersMiddleware adds all expected headers to API responses."""
+    r = client.get("/api/settings")
+    assert r.headers.get("x-content-type-options") == "nosniff"
+    assert r.headers.get("x-frame-options") == "SAMEORIGIN"
+    assert r.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+    csp = r.headers.get("content-security-policy", "")
+    assert "default-src 'self'" in csp
+    assert "script-src 'self' 'unsafe-eval'" in csp
+    assert "style-src 'self' 'unsafe-inline'" in csp
+
+
+def test_security_headers_on_static(client):
+    """SecurityHeadersMiddleware also sets headers on static file responses."""
+    r = client.get("/static/app.js")
+    assert r.headers.get("x-content-type-options") == "nosniff"
+    assert r.headers.get("x-frame-options") == "SAMEORIGIN"
