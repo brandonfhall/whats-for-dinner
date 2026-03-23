@@ -76,7 +76,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 ### Coverage
 - Coverage is enforced automatically by `pytest.ini` (`--cov-fail-under=90`)
 - Tests will fail if `app/` coverage drops below 90%
-- Current coverage: ~96% (uncovered lines are mostly production-only paths: real AI API calls, production DB init, symlink backup on Windows)
+- Current coverage: ~93% (uncovered lines are production-only paths: real AI API calls, production DB init, weekly backup)
 
 ### Test Structure
 - `tests/conftest.py` — shared fixtures, fresh in-memory SQLite per test
