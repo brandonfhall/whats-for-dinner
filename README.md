@@ -122,7 +122,7 @@ Once you have some meals in the library, click **✨ Suggest with AI** and pick 
 - **🛡️ Play it safe** — favours household favourites (high usage count). Good for a low-effort week.
 - **📦 On hand** — only suggests meals with available protein stock or frozen portions. Good for using what you've got.
 
-Claude (or GPT-4o) looks at your full meal library, the last 8 weeks of plans, and your configured gym/eat-out nights, then fills in all 7 days. Click any day afterward to adjust.
+Claude (or GPT-4o) looks at your full meal library, the last 8 weeks of plans, your configured gym/eat-out nights, and any notes you've written for the current week or individual days, then fills in all 7 days. Click any day afterward to adjust.
 
 If AI isn't configured, the button will redirect you to Settings where you'll see setup instructions.
 

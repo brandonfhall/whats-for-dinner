@@ -15,7 +15,7 @@ Designed for home networks — no auth, no cloud, no fuss.
 - **Protein inventory** — database-driven protein stock tracking (14 defaults auto-seeded); monitor what's on hand
 - **Weekly planner** — 7-day dinner grid; set each day to home-cooked, frozen, eat out, or other (with optional note)
 - **Shopping list** — read-only view comparing planned meal needs vs current inventory
-- **AI suggestions** — Claude or GPT-4o drafts the week from your library and history; three modes: 🎲 Mix it up / 🛡️ Play it safe / 📦 On hand (only meals with available stock)
+- **AI suggestions** — Claude or GPT-4o drafts the week from your library and history; three modes: 🎲 Mix it up / 🛡️ Play it safe / 📦 On hand (only meals with available stock); current week notes and per-day notes are included in the prompt for additional context
 - **Custom AI instructions** — free-text setting to provide the AI with dietary preferences, restrictions, or cooking style
 - **Gym nights** — AI prefers easy meals on nights you configure as gym nights
 - **📌 Carry-forward** — pin a day so its meal copies to the same day next week automatically
