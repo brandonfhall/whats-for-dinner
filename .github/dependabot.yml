@@ -5,16 +5,23 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      python-deps:
+      python-runtime:
         patterns:
           - "*"
+        exclude-patterns:
+          - "pytest*"
+          - "httpx"
+      python-test:
+        patterns:
+          - "pytest*"
+          - "httpx"
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
-      npm-deps:
+      frontend:
         patterns:
           - "*"
 
@@ -23,6 +30,10 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      github-actions:
+      docker-actions:
+        patterns:
+          - "docker/*"
+          - "peter-evans/*"
+      core-actions:
         patterns:
           - "*"
