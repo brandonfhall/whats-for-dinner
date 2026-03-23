@@ -107,6 +107,40 @@ def test_filter_buttons_wrap_on_mobile():
     )
 
 
+def test_day_cards_show_date_alongside_name():
+    """Weekly view day cards must display the date alongside the day name.
+
+    The day header uses dayDateStr() to calculate M/D from the plan's
+    week_start + day_of_week so users see 'SUNDAY - 3/22' rather than
+    just 'SUNDAY'.
+    """
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    assert 'dayDateStr(' in html, (
+        "Weekly day cards must call dayDateStr() to show the date next to "
+        "the day name."
+    )
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'dayDateStr(' in js, (
+        "app.js must define a dayDateStr() function to compute the date "
+        "for each day of the week."
+    )
+
+
+def test_month_view_shows_other_days_with_custom_text():
+    """Month view must display 'Other' days that have custom text.
+
+    Days with day_type='skip' and a custom_name (e.g. 'Leftovers')
+    should still show their label on the month calendar rather than
+    being hidden entirely.
+    """
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    # The month view x-show condition must allow skip days with custom_name
+    assert ".custom_name)" in html, (
+        "Month view must check custom_name so 'Other' days with text "
+        "are visible on the calendar."
+    )
+
+
 def test_input_css_safelists_dynamic_classes():
     """input.css must force-include every class built from template literals.
 

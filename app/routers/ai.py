@@ -187,6 +187,7 @@ INSTRUCTIONS:
 6. Try to vary the cuisine across the week — avoid back-to-back nights with the same cuisine when alternatives exist.
 7. When two consecutive home-cooked nights share ingredients, note it in the notes field.
 8. If a meal has has_leftovers=true, you may note that in the next day's notes.
+9. Do NOT repeat any existing day notes in your response — they are preserved automatically. Only add new information in the notes field.
 
 Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 7 objects in this format:
 [
@@ -294,7 +295,16 @@ def _apply_suggestions(
         day.day_type = day_type
         day.meal_id = int(meal_id) if meal_id and day_type == DayType.home_cooked else None
         day.custom_name = s.get("custom_name", "") or ""
-        day.notes = s.get("notes", "") or ""
+
+        ai_notes = s.get("notes", "") or ""
+        if ai_notes:
+            ai_notes = f"AI - {ai_notes}"
+        existing_notes = day.notes.strip() if day.notes else ""
+        if existing_notes and ai_notes:
+            day.notes = f"{existing_notes}\n{ai_notes}"
+        elif ai_notes:
+            day.notes = ai_notes
+        # else: keep existing notes unchanged (don't overwrite with empty)
 
         result.append(
             AIDaySuggestion(

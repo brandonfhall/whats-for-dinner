@@ -154,7 +154,7 @@
             :class="dayCardClass(day)"
           >
             <div class="flex items-start justify-between mb-2">
-              <span class="text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="dayName(day.day_of_week)"></span>
+              <span class="text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="dayName(day.day_of_week) + ' - ' + dayDateStr(currentPlan?.week_start, day.day_of_week)"></span>
               <div class="flex items-center gap-1">
                 <span x-show="day.carry_forward" class="text-xs text-gray-400" title="Carries forward to next week">📌</span>
                 <span x-show="settings.gym_days.includes(day.day_of_week)" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">gym</span>
@@ -440,7 +440,7 @@
                   x-text="parseInt(dateStr.split('-')[2])"
                 ></p>
                 <p
-                  x-show="dayForDate(dateStr) && dayForDate(dateStr).day_type !== 'skip'"
+                  x-show="dayForDate(dateStr) && (dayForDate(dateStr).day_type !== 'skip' || dayForDate(dateStr).custom_name)"
                   class="text-xs leading-snug text-gray-700 line-clamp-2"
                   x-text="dayShortLabel(dayForDate(dateStr))"
                 ></p>
