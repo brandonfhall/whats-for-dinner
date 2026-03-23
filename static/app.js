@@ -221,6 +221,13 @@ function app() {
       return DAY_NAMES[dow] || '';
     },
 
+    dayDateStr(weekStart, dow) {
+      if (!weekStart) return '';
+      const d = new Date(weekStart + 'T00:00:00');
+      d.setDate(d.getDate() + dow);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    },
+
     dayIcon(day) {
       if (!day) return '';
       if (day.day_type === 'home_cooked') return '🍳';
