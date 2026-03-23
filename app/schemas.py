@@ -126,12 +126,14 @@ class SettingsOut(BaseModel):
     gym_days: list[int] = []          # 0=Mon … 6=Sun
     eat_out_days: list[int] = []
     ai_provider: str = "anthropic"
+    custom_instructions: str = ""
 
 
 class SettingsUpdate(BaseModel):
     gym_days: Optional[list[int]] = None
     eat_out_days: Optional[list[int]] = None
     ai_provider: Optional[str] = None
+    custom_instructions: Optional[str] = None
 
 
 # ── Protein Inventory ────────────────────────────────────────────────────────

@@ -100,6 +100,25 @@ def _get_protein_inventory(db: Session) -> list[dict]:
     ]
 
 
+def _get_current_week_context(db: Session, week_start: date) -> dict | None:
+    """Return the current week's plan-level and per-day notes, if any exist."""
+    plan = db.query(WeeklyPlan).options(
+        joinedload(WeeklyPlan.days)
+    ).filter(WeeklyPlan.week_start == week_start).first()
+    if not plan:
+        return None
+    context: dict = {}
+    if plan.notes and plan.notes.strip():
+        context["week_notes"] = plan.notes.strip()
+    day_notes = []
+    for day in sorted(plan.days, key=lambda d: d.day_of_week):
+        if day.notes and day.notes.strip():
+            day_notes.append({"day": DAY_NAMES[day.day_of_week], "notes": day.notes.strip()})
+    if day_notes:
+        context["day_notes"] = day_notes
+    return context if context else None
+
+
 def _build_prompt(
     week_start: date,
     library: list[dict],
@@ -108,6 +127,8 @@ def _build_prompt(
     eat_out_days: list[int],
     mode: str = "mix",
     protein_inventory: list[dict] | None = None,
+    custom_instructions: str = "",
+    current_week_context: dict | None = None,
 ) -> str:
     gym_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in gym_days]
     eat_out_strs = [f"{DAY_NAMES[d]} (day_of_week={d})" for d in eat_out_days]
@@ -182,6 +203,17 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
 """
     if protein_inventory:
         prompt += f"\nPROTEIN INVENTORY (what's currently in stock):\n{json.dumps(protein_inventory, indent=2)}\n"
+
+    if current_week_context:
+        prompt += "\nCURRENT WEEK CONTEXT (notes already set for this week):\n"
+        if "week_notes" in current_week_context:
+            prompt += f"Week notes: {current_week_context['week_notes']}\n"
+        if "day_notes" in current_week_context:
+            for dn in current_week_context["day_notes"]:
+                prompt += f"- {dn['day']}: {dn['notes']}\n"
+
+    if custom_instructions and custom_instructions.strip():
+        prompt += f"\nADDITIONAL USER INSTRUCTIONS:\n{custom_instructions.strip()}\n"
 
     return prompt
 
@@ -291,10 +323,13 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
 
     history = _get_history(db, payload.week_start)
     protein_inv = _get_protein_inventory(db) if payload.mode == "on_hand" else None
+    week_context = _get_current_week_context(db, payload.week_start)
     prompt = _build_prompt(
         payload.week_start, library, history, settings["gym_days"], settings["eat_out_days"],
         mode=payload.mode,
         protein_inventory=protein_inv,
+        custom_instructions=settings.get("custom_instructions", ""),
+        current_week_context=week_context,
     )
 
     configured, reason = _check_configured(provider)

@@ -511,6 +511,18 @@ AI_API_KEY=sk-ant-...</pre>
           <span class="inline-block bg-violet-100 text-violet-800 text-sm font-medium px-3 py-1 rounded-full" x-text="settings.ai_provider || 'anthropic'"></span>
         </div>
 
+        <!-- Custom AI instructions -->
+        <div class="px-5 py-4">
+          <p class="font-medium text-gray-800 mb-1">Custom AI instructions</p>
+          <p class="text-sm text-gray-500 mb-3">Provide additional context for AI meal suggestions — dietary preferences, ingredient restrictions, cooking style, etc. These are sent alongside every AI generation request.</p>
+          <textarea
+            x-model="settings.custom_instructions"
+            rows="4"
+            placeholder="e.g. We prefer spicy food. Avoid dairy on weeknights. Try to include one vegetarian meal per week."
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand resize-y"
+          ></textarea>
+        </div>
+
         <div class="px-5 py-4">
           <button
             @click="saveSettings()"

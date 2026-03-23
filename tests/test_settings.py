@@ -61,3 +61,31 @@ def test_gym_and_eat_out_can_overlap(client):
     data = r.json()
     assert 5 in data["gym_days"]
     assert 5 in data["eat_out_days"]
+
+
+# ── Custom instructions ──────────────────────────────────────────────────────
+
+def test_get_settings_returns_empty_custom_instructions(client):
+    r = client.get("/api/settings")
+    assert r.status_code == 200
+    assert r.json()["custom_instructions"] == ""
+
+
+def test_update_custom_instructions(client):
+    r = client.put("/api/settings", json={"custom_instructions": "We prefer spicy food"})
+    assert r.status_code == 200
+    assert r.json()["custom_instructions"] == "We prefer spicy food"
+
+
+def test_custom_instructions_persist_across_requests(client):
+    client.put("/api/settings", json={"custom_instructions": "No dairy"})
+    r = client.get("/api/settings")
+    assert r.json()["custom_instructions"] == "No dairy"
+
+
+def test_custom_instructions_update_leaves_other_fields_unchanged(client):
+    client.put("/api/settings", json={"gym_days": [1], "custom_instructions": "Vegetarian"})
+    client.put("/api/settings", json={"custom_instructions": "Vegan"})
+    data = client.get("/api/settings").json()
+    assert data["custom_instructions"] == "Vegan"
+    assert data["gym_days"] == [1]
