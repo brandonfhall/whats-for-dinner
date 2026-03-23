@@ -87,6 +87,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - `tests/test_frontend_assets.py` — CSS/JS config verification
 - `tests/test_migrations.py` — CHECK constraint migration logic
 - `tests/test_backup.py` — database backup/export endpoints and weekly backup logic
+- `tests/test_demo.py` — demo mode data seeding
 
 ### Test Patterns
 - Use the `client` fixture for API testing (FastAPI TestClient)
@@ -114,6 +115,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - **Custom AI instructions** — free-text setting (`custom_instructions`) appended to every AI prompt; stored in the settings key-value store
 - **Current week context in AI prompts** — when generating, the AI receives the current week's plan-level notes and any per-day notes (but NOT notes from previous weeks)
 - **AI notes prefixing** — AI-generated day notes are prefixed with "AI - " so users can distinguish them from their own notes; existing day notes are preserved and AI notes appended on a new line
+- **Demo mode** — set `DEMO_MODE=true` to seed ~20 sample meals and protein inventory on first startup; useful for testing AI suggestions without manual data entry; `docker-compose.local.yml` enables this by default
 
 ## Key Files
 

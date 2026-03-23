@@ -188,6 +188,7 @@ Household meal planning web application for two people. Single-container Docker 
 6. **Shopping List**: Read-only list comparing plan needs vs inventory (protein stock + frozen meal count)
 7. **Month View**: Calendar overview, click to navigate to any week
 8. **Settings**: Gym days, eat-out days, AI provider selection, custom AI instructions
+9. **Demo Mode**: `DEMO_MODE=true` env var seeds ~20 sample meals (varied types, proteins, cuisines) and protein inventory quantities on first startup; skips if meals already exist
 
 ## Frontend Structure
 
@@ -210,6 +211,7 @@ Household meal planning web application for two people. Single-container Docker 
 - Protein inventory is a separate global table shared across all meals
 - Shopping list computed on-the-fly (not persisted)
 - Protein seed data auto-populated on first startup if table is empty
+- Demo mode (`DEMO_MODE=true`) seeds sample meals and protein quantities on startup if meals table is empty; follows same guard pattern as protein seeding
 - Non-negative quantities enforced at both code layer (`max(0, ...)`) and DB layer (`CHECK` constraints) for `frozen_quantity`, `protein_servings`, and `protein_inventory.quantity`
 - Automatic database backup before migrations (SQLite backup API); manual backup via `/api/backup`
 - Weekly backup on startup (one per calendar week, skips if already exists)
