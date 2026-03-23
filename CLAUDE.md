@@ -66,15 +66,17 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 
 ### Running Tests
 ```bash
-# Always use the virtual environment
+# Always use the virtual environment — coverage runs automatically via pytest.ini
 .venv/bin/python -m pytest tests/ -v
 
 # Run a specific test file
 .venv/bin/python -m pytest tests/test_meals.py -v
-
-# Run with coverage
-.venv/bin/python -m pytest tests/ --cov=app --cov-report=term
 ```
+
+### Coverage
+- Coverage is enforced automatically by `pytest.ini` (`--cov-fail-under=90`)
+- Tests will fail if `app/` coverage drops below 90%
+- Current coverage: ~93% (uncovered lines are production-only paths: real AI API calls, production DB init, weekly backup)
 
 ### Test Structure
 - `tests/conftest.py` — shared fixtures, fresh in-memory SQLite per test

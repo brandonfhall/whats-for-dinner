@@ -131,6 +131,30 @@ def test_backup_api_download_not_found(client):
     assert r.status_code == 404
 
 
+def test_backup_api_download_blocks_directory_traversal(client, tmp_path):
+    """A file that resolves outside BACKUP_DIR is rejected with 400."""
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+
+    # Create a file outside backup_dir and simulate resolve returning it
+    outside_file = tmp_path / "dinner_evil.db"
+    outside_file.write_bytes(b"evil data")
+
+    original_resolve = Path.resolve
+
+    def patched_resolve(self, strict=False):
+        # When resolving the candidate file, return the outside path
+        if "dinner_evil.db" in str(self) and str(backup_dir) in str(self):
+            return outside_file
+        return original_resolve(self, strict=strict)
+
+    with patch("app.routers.backup.BACKUP_DIR", backup_dir):
+        with patch.object(Path, "resolve", patched_resolve):
+            r = client.get("/api/backup/download/dinner_evil.db")
+    assert r.status_code == 400
+    assert "Invalid" in r.json()["detail"]
+
+
 def test_backup_api_download_rejects_non_dinner_prefix(client, tmp_path):
     """GET /api/backup/download rejects files that don't start with 'dinner_'."""
     backup_dir = tmp_path / "backups"
