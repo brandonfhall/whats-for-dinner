@@ -85,7 +85,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - `tests/test_ai.py` — AI status, prompt building, mocked generation
 - `tests/test_inventory.py` — protein inventory CRUD
 - `tests/test_settings.py` — settings key-value store
-- `tests/test_security.py` — middleware (CORS, subnet, access log)
+- `tests/test_security.py` — middleware (CORS, subnet, access log, security headers)
 - `tests/test_frontend_assets.py` — CSS/JS config verification
 - `tests/test_migrations.py` — CHECK constraint migration logic
 - `tests/test_backup.py` — database backup/export endpoints and weekly backup logic
@@ -123,7 +123,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 
 | File | Purpose |
 |------|---------|
-| `app/main.py` | FastAPI app, middleware, router registration |
+| `app/main.py` | FastAPI app, middleware (CORS, subnet, security headers, access log), router registration |
 | `app/models.py` | SQLAlchemy ORM models |
 | `app/schemas.py` | Pydantic request/response schemas |
 | `app/database.py` | DB engine, sessions, migrations, backup, seed data |
