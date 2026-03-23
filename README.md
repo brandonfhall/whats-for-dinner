@@ -236,10 +236,10 @@ pip install -r requirements.txt -r requirements-test.txt
 pytest
 ```
 
-For a coverage report:
+Coverage runs automatically via `pytest.ini` (minimum 90% required). For a detailed report:
 
 ```bash
-pytest --cov=app --cov-report=term-missing
+pytest --cov-report=term-missing
 ```
 
 ### CI
