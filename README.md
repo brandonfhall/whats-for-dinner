@@ -221,7 +221,7 @@ Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Sw
 
 ## Tests
 
-The project has 155 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
+The project has 170 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
 
 ### Run locally
 
@@ -242,12 +242,12 @@ pytest --cov=app --cov-report=term-missing
 
 ### CI
 
-On every push and pull request to `main`, GitHub Actions runs two jobs (see [.github/workflows/test.yml](.github/workflows/test.yml)):
+On every push and pull request to `main` or `develop`, GitHub Actions runs two jobs (see [.github/workflows/test.yml](.github/workflows/test.yml)):
 
 - **test** — runs the full pytest suite; no API keys required (all AI calls are mocked)
 - **docker** — builds the Docker image and verifies that `tailwind.css` and `alpine.min.js` were compiled into the image correctly
 
-The weekly build check ([.github/workflows/weekly-build-check.yml](.github/workflows/weekly-build-check.yml)) runs the same Docker build against the latest unpinned dependencies to catch upstream breakage early. The publish workflow ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) also verifies frontend assets before pushing to Docker Hub.
+Dependency updates are handled by Dependabot with weekly grouped PRs (one per ecosystem). The publish workflow ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) verifies frontend assets before pushing to Docker Hub, and also rebuilds monthly to pick up base image security patches.
 
 ---
 

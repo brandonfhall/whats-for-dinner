@@ -138,7 +138,15 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 | `test.yml` | push/PR to `main` or `develop` | Runs pytest + Docker build/asset checks |
 | `codeql.yml` | push/PR to `main` or `develop` | CodeQL security scan (Python + Actions) |
 | `docker-publish.yml` | push to `main` or `develop`, version tags, monthly schedule | Builds multi-arch image and pushes to Docker Hub |
-| `weekly-build-check.yml` | weekly + PR to `main` | Tests against unpinned latest deps |
+| `sync-develop.yml` | push to `main` | Auto-merges `main` into `develop`; resolves conflicts by favouring `main` |
+
+**Dependabot:**
+Dependabot runs weekly and opens grouped PRs (one per ecosystem) rather than one PR per package:
+- `python-runtime` — all runtime pip deps
+- `python-test` — pytest, pytest-cov, httpx
+- `docker-actions` — docker/\* and peter-evans/\* actions
+- `core-actions` — actions/\* and github/\* actions
+- `frontend` — all npm deps (tailwindcss, alpinejs)
 
 **Docker Hub tagging:**
 - `main` → `latest` + `YYYYMMDD` date tag
