@@ -580,3 +580,47 @@ def test_today_response_has_required_fields(client):
     data = r.json()
     for field in ("day_of_week", "day_name", "dinner", "detail", "day_type"):
         assert field in data
+
+
+def test_today_home_cooked_no_meal_no_custom_name(client):
+    """When today is home_cooked but no meal assigned, dinner is 'Unknown'."""
+    fixed_plan = client.get(f"/api/plans/week/{_FIXED_TODAY.isoformat()}").json()
+    client.put(f"/api/plans/{fixed_plan['id']}/days/{_FIXED_DOW}", json={
+        "day_type": "home_cooked", "meal_id": None,
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["dinner"] == "Unknown"
+    assert "hasn't been planned" in data["detail"]
+
+
+def test_today_home_cooked_meal_no_protein(client, meals):
+    """When today's meal has no protein, detail omits protein mention."""
+    # Create a meal without protein
+    meal = client.post("/api/meals", json={
+        "name": "Plain Pasta", "meal_type": "home_cooked",
+        "notes": "", "recipe_url": "", "has_leftovers": False,
+        "easy_to_make": False, "shared_ingredients": "", "protein": "",
+    }).json()
+
+    fixed_plan = client.get(f"/api/plans/week/{_FIXED_TODAY.isoformat()}").json()
+    client.put(f"/api/plans/{fixed_plan['id']}/days/{_FIXED_DOW}", json={
+        "day_type": "home_cooked", "meal_id": meal["id"],
+        "custom_name": "", "notes": "", "carry_forward": False,
+    })
+
+    with patch("app.routers.plans.date") as mock_date:
+        mock_date.today.return_value = _FIXED_TODAY
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+        r = client.get("/api/plans/today")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["dinner"] == "Plain Pasta"
+    assert "protein" not in data["detail"].lower()
+    assert "home cooked" in data["detail"]

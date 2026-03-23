@@ -23,6 +23,7 @@ Designed for home networks — no auth, no cloud, no fuss.
 - **Week notes** — free-text memo per week (guests, themes, etc.)
 - **`/api/plans/today` endpoint** — returns tonight's dinner as a natural-language string; ideal for Home Assistant TTS / Google Home routines
 - **Database backups** — automatic pre-migration and weekly backups; manual export via API
+- **Demo mode** — seed ~20 sample meals and protein inventory with `DEMO_MODE=true` for quick testing
 - **Offline-capable** — Alpine.js and Tailwind CSS vendored into the image; no CDN or internet access required at runtime
 
 ---
@@ -81,6 +82,7 @@ Then visit `http://your-server-ip:8000`.
 | `APP_PORT` | No | `8000` | Port the app listens on inside the container |
 | `ALLOWED_ORIGINS` | No | `*` | CORS allowed origins (comma-separated, or `*`) |
 | `ALLOWED_SUBNETS` | No | _(all)_ | Restrict access to these CIDRs, e.g. `192.168.1.0/24` |
+| `DEMO_MODE` | No | `false` | Set to `true` to seed ~20 sample meals and protein inventory on first startup |
 
 AI is fully optional — set `AI_PROVIDER=none` or omit `AI_API_KEY` to disable it. The UI will tell you clearly if AI isn't configured.
 

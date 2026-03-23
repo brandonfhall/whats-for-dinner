@@ -38,7 +38,7 @@ jobs:
           pip install -r requirements-test.txt
 
       - name: Run tests
-        run: pytest --cov=app --cov-report=term-missing
+        run: pytest
         env:
           # AI keys are not available in CI — tests mock all AI calls
           AI_API_KEY: ""

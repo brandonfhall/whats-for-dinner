@@ -536,3 +536,125 @@ def test_generate_on_hand_mode_mocked(client, meals):
 
     assert r.status_code == 200
     assert len(r.json()["suggestions"]) == 7
+
+
+def test_generate_ai_error_returns_500(client, meals):
+    """When the AI provider raises an error, generate returns 500."""
+    plan = client.get("/api/plans/current").json()
+
+    with patch("app.routers.ai._call_anthropic", side_effect=RuntimeError("API unavailable")):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 500
+    assert "API unavailable" in r.json()["detail"]
+
+
+def test_generate_invalid_existing_plan_id_returns_404(client, meals):
+    """When existing_plan_id doesn't exist, generate returns 404."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": 99999,
+            })
+
+    assert r.status_code == 404
+
+
+def test_generate_eat_out_and_skip_day_types(client, meals):
+    """AI can suggest eat_out and skip day types."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = [
+        {"day_of_week": 0, "day_type": "home_cooked", "meal_id": meals[0]["id"],
+         "meal_name": meals[0]["name"], "custom_name": "", "notes": ""},
+        {"day_of_week": 1, "day_type": "eat_out", "meal_id": None,
+         "meal_name": "", "custom_name": "Pizza Place", "notes": ""},
+        {"day_of_week": 2, "day_type": "skip", "meal_id": None,
+         "meal_name": "", "custom_name": "Leftovers", "notes": ""},
+        {"day_of_week": 3, "day_type": "home_cooked", "meal_id": meals[1]["id"],
+         "meal_name": meals[1]["name"], "custom_name": "", "notes": ""},
+        {"day_of_week": 4, "day_type": "home_cooked", "meal_id": meals[2]["id"],
+         "meal_name": meals[2]["name"], "custom_name": "", "notes": ""},
+        {"day_of_week": 5, "day_type": "eat_out", "meal_id": None,
+         "meal_name": "", "custom_name": "Sushi", "notes": ""},
+        {"day_of_week": 6, "day_type": "home_cooked", "meal_id": meals[0]["id"],
+         "meal_name": meals[0]["name"], "custom_name": "", "notes": ""},
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    result = {s["day_of_week"]: s for s in r.json()["suggestions"]}
+    assert result[1]["day_type"] == "eat_out"
+    assert result[1]["custom_name"] == "Pizza Place"
+    assert result[2]["day_type"] == "skip"
+
+
+def test_generate_invalid_day_type_defaults_to_skip(client, meals):
+    """AI returning an invalid day_type should default to skip."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = [
+        {"day_of_week": i, "day_type": "invalid_type" if i == 0 else "home_cooked",
+         "meal_id": meals[0]["id"], "meal_name": meals[0]["name"],
+         "custom_name": "", "notes": ""}
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    result = {s["day_of_week"]: s for s in r.json()["suggestions"]}
+    assert result[0]["day_type"] == "skip"
+
+
+def test_generate_with_history_and_week_notes(client, meals):
+    """Generate with a prior plan (meals assigned) and current plan notes covers history+context paths."""
+    from datetime import timedelta
+
+    current_plan = client.get("/api/plans/current").json()
+    current_week = date.fromisoformat(current_plan["week_start"])
+
+    # Create a PAST week plan with meals and custom names → history
+    past_week = (current_week - timedelta(weeks=1)).isoformat()
+    past_plan = client.get(f"/api/plans/week/{past_week}").json()
+    client.put(f"/api/plans/{past_plan['id']}/days/0", json={
+        "day_type": "home_cooked", "meal_id": meals[0]["id"],
+    })
+    client.put(f"/api/plans/{past_plan['id']}/days/1", json={
+        "day_type": "eat_out", "custom_name": "Pizza Hut",
+    })
+
+    # Add plan-level notes to CURRENT plan → week_context
+    client.put(f"/api/plans/{current_plan['id']}/notes", json={
+        "notes": "Guests visiting this week",
+    })
+
+    # Generate for the current week (past plan is history, current has notes)
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+            r = client.post("/api/ai/generate", json={
+                "week_start": current_plan["week_start"],
+                "existing_plan_id": current_plan["id"],
+            })
+
+    assert r.status_code == 200
+    assert len(r.json()["suggestions"]) == 7

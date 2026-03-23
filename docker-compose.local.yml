@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - DEMO_MODE=true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dinner.rule=Host(`${APP_HOSTNAME}`)"
