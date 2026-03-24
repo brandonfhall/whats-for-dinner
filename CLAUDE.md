@@ -64,39 +64,12 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 
 ## Testing
 
-### Running Tests
-```bash
-# Always use the virtual environment — coverage runs automatically via pytest.ini
-.venv/bin/python -m pytest tests/ -v
-
-# Run a specific test file
-.venv/bin/python -m pytest tests/test_meals.py -v
-```
-
-### Coverage
 - Coverage is enforced automatically by `pytest.ini` (`--cov-fail-under=90`)
-- Tests will fail if `app/` coverage drops below 90%
-- Current coverage: ~93% (uncovered lines are production-only paths: real AI API calls, production DB init, weekly backup)
-
-### Test Structure
-- `tests/conftest.py` — shared fixtures, fresh in-memory SQLite per test
-- `tests/test_meals.py` — meal library CRUD
-- `tests/test_plans.py` — weekly plans, day updates, carry-forward, shopping list
-- `tests/test_ai.py` — AI status, prompt building, mocked generation
-- `tests/test_inventory.py` — protein inventory CRUD
-- `tests/test_settings.py` — settings key-value store
-- `tests/test_security.py` — middleware (CORS, subnet, access log, security headers)
-- `tests/test_frontend_assets.py` — CSS/JS config verification
-- `tests/test_migrations.py` — CHECK constraint migration logic
-- `tests/test_backup.py` — database backup/export endpoints and weekly backup logic
-- `tests/test_demo.py` — demo mode data seeding
-
-### Test Patterns
 - Use the `client` fixture for API testing (FastAPI TestClient)
 - Use the `meals` fixture for tests that need pre-seeded meal data
 - AI tests mock `_call_anthropic` / `_call_openai` — never make real API calls
 - `MEAL_DEFAULTS` dict provides default field values for creating test meals
-- Every test gets a fresh database — no test isolation concerns
+- Every test gets a fresh in-memory SQLite database — no test isolation concerns
 
 ### What to Test
 - All new API endpoints (happy path + error cases: 404, 409, 422)
@@ -114,27 +87,6 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - **No build step in dev** — Tailwind is compiled at Docker build time only
 - **Offline-capable** — all JS/CSS vendored into the Docker image
 - **AI is optional** — app works fully without any AI provider configured
-- **Custom AI instructions** — free-text setting (`custom_instructions`) appended to every AI prompt; stored in the settings key-value store
-- **Current week context in AI prompts** — when generating, the AI receives the current week's plan-level notes and any per-day notes (but NOT notes from previous weeks)
-- **AI notes prefixing** — AI-generated day notes are prefixed with "AI - " so users can distinguish them from their own notes; existing day notes are preserved and AI notes appended on a new line
-- **Demo mode** — set `DEMO_MODE=true` to seed ~20 sample meals and protein inventory on first startup; useful for testing AI suggestions without manual data entry; `docker-compose.local.yml` enables this by default
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `app/main.py` | FastAPI app, middleware (CORS, subnet, security headers, access log), router registration |
-| `app/models.py` | SQLAlchemy ORM models |
-| `app/schemas.py` | Pydantic request/response schemas |
-| `app/database.py` | DB engine, sessions, migrations, backup, seed data |
-| `app/routers/meals.py` | Meal CRUD + frozen quantity adjustment |
-| `app/routers/plans.py` | Plan CRUD + day updates + shopping list |
-| `app/routers/ai.py` | AI plan generation (Claude/OpenAI) |
-| `app/routers/settings.py` | Key-value settings store |
-| `app/routers/inventory.py` | Protein inventory CRUD |
-| `app/routers/backup.py` | Database backup/export endpoints |
-| `static/app.js` | All frontend Alpine.js logic |
-| `static/index.html` | SPA HTML template |
 
 ## CI/CD Pipelines
 
@@ -144,21 +96,6 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 | `codeql.yml` | push/PR to `main` or `develop` | CodeQL security scan (Python + Actions) |
 | `docker-publish.yml` | push to `main` or `develop`, version tags, monthly schedule | Builds multi-arch image and pushes to Docker Hub |
 | `sync-develop.yml` | push to `main` | Auto-merges `main` into `develop`; resolves conflicts by favouring `main` |
-
-**Dependabot:**
-Dependabot runs weekly and opens grouped PRs (one per ecosystem) rather than one PR per package:
-- `python-runtime` — all runtime pip deps
-- `python-test` — pytest, pytest-cov, httpx
-- `docker-actions` — docker/\* and peter-evans/\* actions
-- `core-actions` — actions/\* and github/\* actions
-- `frontend` — all npm deps (tailwindcss, alpinejs)
-
-**Docker Hub tagging:**
-- `main` → `latest` + `YYYYMMDD` date tag
-- `develop` → `develop` tag only
-- `v*.*.*` tags → version tag
-- DockerHub readme (`DOCKERHUB.md`) is only updated on `main` / version tags
-- Tag pruning only runs on `main` (keeps last 5, never deletes `latest` or `develop`)
 
 ## Adding New Features
 
