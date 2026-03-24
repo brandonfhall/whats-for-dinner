@@ -29,6 +29,7 @@ Household meal planning web application for two people. Single-container Docker 
 |                           |
 |  Middleware:              |
 |   - CORS                 |
+|   - Security headers     |
 |   - Subnet restriction   |
 |   - Access logging       |
 |                           |
@@ -38,6 +39,7 @@ Household meal planning web application for two people. Single-container Docker 
 |   /api/ai         (gen)  |
 |   /api/settings   (CRUD) |
 |   /api/inventory  (CRUD) |
+|   /api/backup     (export)|
 +------------+--------------+
              |
              v

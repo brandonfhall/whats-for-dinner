@@ -1,8 +1,8 @@
-# What's For Dinner? 🍽️
+# What's For Dinner?
 
-A simple household meal planning webapp. Build a library of meals you actually like, plan the week in a 7-day grid, and optionally let AI draft the plan based on your history.
+A self-hosted meal planning app for households. Build a library of meals you actually cook, plan the week on a 7-day grid, track your protein and frozen meal inventory, and optionally let AI fill in the plan based on your history and preferences.
 
-Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
+Runs on your home network with no authentication, no cloud dependency, and no external assets at runtime.
 
 [![Docker Hub](https://img.shields.io/docker/pulls/brandonh317/whats-for-dinner?label=Docker%20Hub)](https://hub.docker.com/r/brandonh317/whats-for-dinner)
 
@@ -12,131 +12,110 @@ Designed to run on a home network behind Traefik — no auth, no cloud, no fuss.
 
 ## Features
 
-- **Meal Library** — track every meal with notes, recipe link, protein type, cuisine tag, and flags like ⚡ easy-to-make and 📦 has-leftovers
-- **Frozen Meal Inventory** — track homemade frozen meal prep portions with +/- quantity controls in the library and meal editor
-- **Protein Inventory** — database-driven protein stock tracking (14 defaults auto-seeded); adjust quantities per serving and monitor what's on hand
-- **Weekly planner** — a 7-day grid for dinners; click any day to set it as home-cooked, eating out, frozen, or unplanned
-- **Week notes** — a free-text memo on each week (guests, theme, etc.); auto-saves on blur
-- **Shopping list** — read-only view comparing planned meal needs vs current inventory (protein stock + frozen meal count)
-- **AI suggestions** — Claude or GPT-4o drafts the week based on your history and library; three modes: 🎲 Mix it up (favour less-used meals), 🛡️ Play it safe (favour favourites), or 📦 On hand (only suggest meals with available protein/frozen stock)
-- **Custom AI instructions** — free-text field in Settings to give the AI additional context (dietary preferences, restrictions, cooking style); sent with every generation request
-- **AI notes** — AI-generated day notes are prefixed with "AI - " and appended to any existing notes rather than overwriting them
-- **Gym nights** — configure which nights you go to the gym; AI will prefer easy-to-make meals on those nights
-- **📌 Carry-forward** — pin any day so its meal copies to the same day next week automatically
-- **Past weeks** — browse previous plans to jog your memory
-- **Database backups** — automatic pre-migration and weekly backups (5-week retention); manual export via `POST /api/backup`
-- **Demo mode** — set `DEMO_MODE=true` to seed ~20 sample meals and protein inventory on first startup for quick testing (enabled by default in `docker-compose.local.yml`)
-- **Offline-capable** — Alpine.js and Tailwind CSS are vendored into the Docker image at build time; no CDN or internet access required at runtime
+### Meal library
+Add every meal your household knows and likes. Each entry tracks the meal name, type (home cooked, eat out, frozen, or other), protein, cuisine, recipe link, notes, whether it's easy to make, whether it produces leftovers, shared ingredients with other meals, how many protein servings it requires, and frozen portion count for frozen meals.
+
+### Weekly planner
+A Sunday-through-Saturday dinner grid. Click any day to assign it:
+
+- **Home cooked** — pick from your meal library
+- **Frozen** — pick a frozen meal (deducts from inventory)
+- **Eat out** — enter a restaurant or cuisine (e.g. "Chipotle")
+- **Other** — free-text note (e.g. "Leftovers", "Travel")
+
+Add a free-text memo to the whole week for context like guests or themes. Browse past weeks with the navigation arrows to review what you've made before. A month-view calendar lets you jump to any week at a glance.
+
+### Inventory tracking
+- **Protein inventory** — 14 default protein types auto-seeded on first run (chicken, beef, shrimp, etc.). Track how many servings you have on hand. The shopping list uses this to calculate what you need to buy.
+- **Frozen meal inventory** — track homemade frozen meal prep portions with +/- controls directly in the library.
+
+### Shopping list
+A read-only view that compares what the current week's plan needs (protein servings and frozen portions) against what you have in inventory, and shows the shortages.
+
+### AI suggestions
+Claude or GPT-4o can draft the entire week for you. Three modes:
+
+- **Mix it up** — weighted toward meals you haven't had recently
+- **Play it safe** — weighted toward household favourites
+- **On hand** — only suggests meals you have the protein or frozen stock for
+
+The AI receives your full meal library, the last 8 weeks of history, your gym/eat-out night settings, any week or day notes you've written, and your custom instructions. AI-generated notes are prefixed with "AI - " and appended to existing notes rather than replacing them.
+
+AI is entirely optional. The app works fully without it.
+
+### Carry-forward
+Pin any day so its assignment automatically copies to the same day next week. Useful for standing meals like "Taco Tuesday." Pinned days only fill in if the next week's day hasn't already been planned.
+
+### Settings
+- **Gym nights** — the AI prefers easy-to-make meals on these nights; shown with a gym icon in the planner
+- **Default eat-out nights** — pre-set to "Eating out" whenever a new plan is created
+- **Custom AI instructions** — free-text field sent with every AI request (dietary preferences, restrictions, cooking style)
+
+### Smart home integration
+`GET /api/plans/today` returns tonight's dinner as a plain-English string. Point a Home Assistant REST sensor at it, wire up a TTS script, and ask your Google Home "What's for dinner?"
+
+### Data safety
+- Automatic backup before every database migration
+- Weekly backup on startup (one per calendar week, 5-week retention)
+- Manual backup/export via the API at any time
+- All data lives in a single SQLite file inside a Docker volume
+
+### Other
+- **Demo mode** — set `DEMO_MODE=true` to seed ~20 sample meals and protein inventory on first startup for quick testing
+- **Fully offline** — Alpine.js and Tailwind CSS are compiled and vendored into the Docker image at build time; no CDN calls at runtime
+- **Subnet restriction** — optionally lock access to specific CIDR ranges via `ALLOWED_SUBNETS`
+- **Security headers** — X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and Content-Security-Policy on every response
 
 ---
 
 ## Quick Start
 
-### 1. Copy and configure the environment file
+### 1. Create your environment file
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env` and set your AI provider and API key (or leave them out to run without AI):
 
 ```env
-# AI provider: "anthropic", "openai", or "none" to disable AI suggestions
 AI_PROVIDER=anthropic
-
-# API key for whichever provider is active above
 AI_API_KEY=sk-ant-...
-
-# CORS: comma-separated allowed origins, or * for any (default: *)
-# Set to your Traefik hostname in production:
-# ALLOWED_ORIGINS=https://dinner.home
-ALLOWED_ORIGINS=*
-
-# Subnet restriction: comma-separated CIDRs, or unset to allow all clients
-# ALLOWED_SUBNETS=192.168.1.0/24,10.0.0.0/8
 ```
 
-AI is optional — set `AI_PROVIDER=none` to disable it entirely, or leave `AI_API_KEY` blank and the UI will tell you clearly it's not configured.
+### 2. Start the container
 
-`ALLOWED_SUBNETS` is also optional. When set, only requests from those CIDR ranges are accepted (useful for locking the app to your LAN). The middleware checks `X-Real-IP` first (set by Traefik), then `X-Forwarded-For`, then the raw socket address.
-
-### 2. Set your Traefik hostname
-
-In `docker-compose.yml`, replace `HOSTNAME_PLACEHOLDER` with the hostname you want Traefik to route to this app:
-
-```yaml
-- "traefik.http.routers.dinner.rule=Host(`dinner.home`)"
-```
-
-### 3. Start the container
+**With Traefik** (set `APP_HOSTNAME` in your `.env`):
 
 ```bash
 docker compose up -d
 ```
 
-The app is served on port `8000`. If you're not using Traefik, you can expose it directly by adding a `ports` section:
+**Without Traefik** (direct port mapping):
 
-```yaml
-services:
-  whats-for-dinner:
-    ports:
-      - "8000:8000"
+```bash
+docker compose -f docker-compose.local.yml up -d
 ```
 
-Then visit `http://your-server-ip:8000`.
+Visit `http://localhost:8000`. The local compose file enables demo mode by default so you'll have sample data to explore.
+
+### 3. Add your meals
+
+Go to the Meal Library tab and start adding meals. Once you have a few, head to This Week and either plan manually or let AI suggest the week.
 
 ---
 
-## Usage
+## Environment Variables
 
-### Setting up your meal library
-
-Go to **Meal Library** and add the meals you cook regularly. For each meal you can record:
-
-| Field | Description |
-|---|---|
-| Name | What you call it |
-| Type | Home cooked / Eat out / Frozen / Other |
-| Protein | Chicken, Beef, Fish, Tofu, etc. — used by AI to vary proteins across the week |
-| Cuisine | Italian, Mexican, Asian, etc. — used by AI to avoid back-to-back same cuisines |
-| ⚡ Easy to make | Low effort — good for after the gym |
-| 📦 Has leftovers | Produces extra for the next day |
-| Recipe link | URL to the recipe (opens in a new tab) |
-| Notes | Anything useful — prep time, variations, etc. |
-| Shared ingredients | Notes on ingredient overlap with other meals |
-| Frozen quantity | Number of frozen portions available (frozen type only) |
-| Protein servings | How many protein servings this meal needs (used for shopping list) |
-
-### Planning the week
-
-Click **This Week**. Each day starts as "Other." Click a day to set it:
-
-- **Home cooked** — pick a meal from your library
-- **Frozen** — pick a frozen meal (deducts from frozen inventory)
-- **Eat out** — type where/what (e.g. "Chipotle", "Thai place")
-- **Other** — optionally add a note (e.g. "Leftovers", "Fasting", "Travel")
-
-### Using AI suggestions
-
-Once you have some meals in the library, click **✨ Suggest with AI** and pick a mode:
-
-- **🎲 Mix it up** — favours meals you haven't had recently or at all. Good for breaking out of a rut.
-- **🛡️ Play it safe** — favours household favourites (high usage count). Good for a low-effort week.
-- **📦 On hand** — only suggests meals with available protein stock or frozen portions. Good for using what you've got.
-
-Claude (or GPT-4o) looks at your full meal library, the last 8 weeks of plans, your configured gym/eat-out nights, and any notes you've written for the current week or individual days, then fills in all 7 days. Click any day afterward to adjust.
-
-If AI isn't configured, the button will redirect you to Settings where you'll see setup instructions.
-
-### Carry-forward (📌)
-
-When editing a day, check **📌 Carry forward** to pin that meal or eat-out choice. When the next week's plan is created, any pinned days are automatically copied over — useful for standing weekly meals (e.g. "Taco Tuesday"). Carry-forward only fills days that haven't been explicitly set yet.
-
-### Configuring gym nights
-
-Go to **Settings** and select your gym nights. These are saved and applied to every new plan — the AI will prefer easy-to-make meals on those nights, and they're shown with a 🏋️ icon in the planner.
-
-You can also configure default eat-out nights, which are pre-set to "Eating out" whenever a new plan is created.
+| Variable | Default | Description |
+|---|---|---|
+| `AI_PROVIDER` | `anthropic` | `anthropic`, `openai`, or `none` to disable AI |
+| `AI_API_KEY` | — | API key for the configured provider |
+| `APP_PORT` | `8000` | Port inside the container |
+| `APP_HOSTNAME` | `dinner.home` | Hostname for Traefik routing |
+| `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
+| `ALLOWED_SUBNETS` | _(all)_ | Restrict access to these CIDRs |
+| `DEMO_MODE` | `false` | Seed sample meals and inventory on first startup |
 
 ---
 
@@ -144,11 +123,11 @@ You can also configure default eat-out nights, which are pre-set to "Eating out"
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.12 + FastAPI |
-| Database | SQLite (file in a named Docker volume) |
-| Frontend | Alpine.js + Tailwind CSS v4 (compiled at image build time via `@tailwindcss/cli`, node:22-slim build stage) |
-| AI | Anthropic Claude `claude-sonnet-4-6` or OpenAI `gpt-4o` |
-| Container | Single Docker image, docker-compose |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 |
+| Database | SQLite (single file in a Docker volume) |
+| Frontend | Alpine.js, Tailwind CSS v4 |
+| AI | Anthropic Claude (`claude-sonnet-4-6`) or OpenAI (`gpt-4o`) |
+| Container | Multi-stage Dockerfile (Node builds CSS, Python serves everything) |
 
 ---
 
@@ -157,114 +136,126 @@ You can also configure default eat-out nights, which are pre-set to "Eating out"
 ```
 whats-for-dinner/
 ├── app/
-│   ├── main.py           # FastAPI app, middleware, access log
-│   ├── database.py       # SQLAlchemy + SQLite setup
+│   ├── main.py           # FastAPI app, middleware, router registration
+│   ├── database.py       # SQLAlchemy engine, migrations, backup logic
 │   ├── models.py         # ORM models (Meal, WeeklyPlan, PlanDay, Setting, ProteinInventory)
 │   ├── schemas.py        # Pydantic request/response schemas
 │   └── routers/
 │       ├── meals.py      # Meal library CRUD + frozen quantity adjustment
-│       ├── plans.py      # Weekly plan CRUD + day updates + shopping list
-│       ├── ai.py         # AI plan generation + status check
+│       ├── plans.py      # Weekly plan CRUD, day updates, shopping list
+│       ├── ai.py         # AI plan generation
 │       ├── inventory.py  # Protein inventory CRUD
-│       ├── backup.py     # Database backup/export
+│       ├── backup.py     # Database backup and export
 │       └── settings.py   # Key-value settings store
 ├── static/
-│   ├── index.html        # SPA shell
-│   ├── app.js            # All Alpine.js frontend logic
+│   ├── index.html        # Single-page app shell
+│   ├── app.js            # All frontend logic (Alpine.js)
 │   └── css/
-│       └── input.css     # Tailwind v4 CSS config: @import, @theme, @source inline() safelist
-├── tests/                # pytest suite (191 tests, in-memory SQLite)
-│   ├── test_frontend_assets.py  # static config checks (no CDN, safelist)
-├── data/                 # SQLite db lives here (volume-mounted, gitignored)
-├── package.json          # Node deps for the Tailwind build stage (tailwindcss, @tailwindcss/cli, alpinejs)
-├── .env.example
-├── docker-compose.yml
-└── Dockerfile            # Multi-stage: Node builds CSS → Python serves everything
+│       └── input.css     # Tailwind v4 source config
+├── tests/                # 193 tests (pytest, in-memory SQLite)
+├── docker-compose.yml    # Production compose (Traefik)
+├── docker-compose.local.yml  # Local dev compose (port mapping + demo mode)
+├── Dockerfile            # Multi-stage build
+├── .env.example          # Environment variable template
+└── docs/
+    └── ARCHITECTURE.md   # Detailed architecture reference
 ```
 
 ---
 
 ## API
 
-The backend exposes a REST API at `/api/`. Useful endpoints:
+All endpoints are under `/api/`. Interactive Swagger docs are available at `/docs`.
 
 ```
-GET    /api/meals                              List meal library
-POST   /api/meals                              Add a meal
-PUT    /api/meals/{id}                         Update a meal
-PATCH  /api/meals/{id}/frozen-quantity?delta=N  Adjust frozen inventory count
+Meals
+  GET    /api/meals                              List active meals
+  POST   /api/meals                              Create a meal
+  GET    /api/meals/{id}                         Get a meal
+  PUT    /api/meals/{id}                         Update a meal
+  DELETE /api/meals/{id}                         Soft-delete a meal
+  PATCH  /api/meals/{id}/frozen-quantity?delta=N  Adjust frozen portion count
 
-GET    /api/plans/current                      Get (or create) this week's plan
-GET    /api/plans/today                        Tonight's dinner as a natural-language string
-PUT    /api/plans/{id}/days/{0-6}              Update a single day in a plan
-PUT    /api/plans/{id}/notes                   Update week-level notes
-GET    /api/plans/{id}/shopping-list           Generate shopping list vs inventory
+Plans
+  GET    /api/plans                              List all plans
+  GET    /api/plans/current                      Get or create this week's plan
+  GET    /api/plans/today                        Tonight's dinner (natural language)
+  GET    /api/plans/week/{date}                  Get or create plan for a specific week
+  POST   /api/plans                              Create a plan
+  GET    /api/plans/{id}                         Get plan with all days
+  PUT    /api/plans/{id}/days/{0-6}              Update a single day
+  PUT    /api/plans/{id}/notes                   Update week notes
+  PUT    /api/plans/{id}/status                  Update plan status
+  DELETE /api/plans/{id}                         Delete a plan
+  GET    /api/plans/{id}/shopping-list           Generate shopping list
 
-GET    /api/inventory/proteins                 List protein inventory
-POST   /api/inventory/proteins                 Add a protein entry
-PUT    /api/inventory/proteins/{name}          Update a protein entry
-PATCH  /api/inventory/proteins/{name}/adjust   Adjust quantity by delta
-DELETE /api/inventory/proteins/{name}          Remove a protein entry
+Inventory
+  GET    /api/inventory/proteins                 List protein inventory
+  POST   /api/inventory/proteins                 Add a protein
+  PUT    /api/inventory/proteins/{name}          Update a protein
+  PATCH  /api/inventory/proteins/{name}/adjust   Adjust quantity
+  DELETE /api/inventory/proteins/{name}          Remove a protein
 
-GET    /api/ai/status                          Check if AI is configured
-POST   /api/ai/generate                        Generate a plan with AI
+AI
+  GET    /api/ai/status                          Check if AI is configured
+  POST   /api/ai/generate                        Generate a plan with AI
 
-POST   /api/backup                             Create backup and download
-GET    /api/backup/list                        List available backups
-GET    /api/backup/download/{filename}         Download a specific backup
+Backup
+  POST   /api/backup                             Create and download a backup
+  GET    /api/backup/list                        List available backups
+  GET    /api/backup/download/{filename}         Download a specific backup
 
-GET    /api/settings                           Read settings
-PUT    /api/settings                           Update settings
+Settings
+  GET    /api/settings                           Read all settings
+  PUT    /api/settings                           Update settings
 ```
-
-Interactive docs are available at `http://your-host/docs` (FastAPI's built-in Swagger UI).
 
 ---
 
-## Tests
+## Testing
 
-The project has 191 tests covering meals, plans, inventory, settings, AI endpoints, security/access-log middleware, demo mode seeding, and frontend asset configuration. Each test runs against a fresh in-memory SQLite database — the production database is never touched.
-
-### Run locally
-
-You'll need Python 3.12. Create a virtual environment, install both dependency files, and run pytest:
+193 tests covering meals, plans, inventory, settings, AI, security middleware, database migrations, demo mode, and frontend asset configuration. Every test runs against a fresh in-memory SQLite database.
 
 ```bash
+# Set up
 python3.12 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt -r requirements-test.txt
+
+# Run
 pytest
 ```
 
-Coverage runs automatically via `pytest.ini` (minimum 90% required). For a detailed report:
-
-```bash
-pytest --cov-report=term-missing
-```
-
-### CI
-
-On every push and pull request to `main` or `develop`, GitHub Actions runs two jobs (see [.github/workflows/test.yml](.github/workflows/test.yml)):
-
-- **test** — runs the full pytest suite; no API keys required (all AI calls are mocked)
-- **docker** — builds the Docker image and verifies that `tailwind.css` and `alpine.min.js` were compiled into the image correctly
-
-Dependency updates are handled by Dependabot with weekly grouped PRs (one per ecosystem). The publish workflow ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) verifies frontend assets before pushing to Docker Hub, and also rebuilds monthly to pick up base image security patches.
+Coverage is enforced at 90% minimum via `pytest.ini`. CI runs the full test suite plus a Docker build verification on every push and PR.
 
 ---
 
 ## Data & Backups
 
-All data is stored in a single SQLite file inside the `dinner-data` Docker volume. To back it up:
+All data lives in a single SQLite file inside the `dinner-data` Docker volume.
 
+**Manual volume backup:**
 ```bash
 docker run --rm -v dinner-data:/data -v $(pwd):/backup alpine \
   tar czf /backup/dinner-backup.tar.gz /data
 ```
 
-To restore:
-
+**Restore:**
 ```bash
 docker run --rm -v dinner-data:/data -v $(pwd):/backup alpine \
   tar xzf /backup/dinner-backup.tar.gz -C /
 ```
+
+The app also creates its own backups automatically before migrations and weekly on startup, and you can trigger a manual backup through the API at `POST /api/backup`.
+
+---
+
+## Docker Hub
+
+Pre-built images are available on Docker Hub: [brandonh317/whats-for-dinner](https://hub.docker.com/r/brandonh317/whats-for-dinner)
+
+---
+
+## License
+
+MIT
