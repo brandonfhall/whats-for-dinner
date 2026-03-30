@@ -521,10 +521,3 @@ These items were identified in the review but excluded from the plan as over-eng
 - **Server-side meal filtering** — client-side is fine for <100 meals
 - **CSP `unsafe-eval` removal** — Alpine.js requires it, this is expected behavior
 
-
-
-
-## Future Changes 
-1. Track when a given week has all days populated, OR AI has already generated the plan for a given week. If a user tryies to generate an AI meal plan for a week show a confirmation dialog indiciating that the weeks plan has already been made, are they sure they want to continue? 
-
-
