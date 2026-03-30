@@ -35,6 +35,7 @@ docker compose -f docker-compose.local.yml up --build
 - SQLAlchemy 2.0 ORM with `Mapped[]` type annotations
 - Pydantic v2 schemas with `model_config = {"from_attributes": True}`
 - Routers in `app/routers/` with prefix `/api/<resource>`
+- Shared helpers in `app/utils.py`: `get_or_404(db, Model, detail, **filters)` for query-then-404, `sunday_of(d)` for week-start calculation, `DAY_NAMES` list
 - Logging via `logging.getLogger(__name__)` — logger name pattern: `dinner.app`, `dinner.access`
 - No Alembic — migrations are manual column additions in `app/database.py:_run_migrations()` using `PRAGMA table_info` checks
 - Enums as `(str, enum.Enum)` subclasses stored as text in SQLite
@@ -64,9 +65,11 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 
 ## Testing
 
-- Coverage is enforced automatically by `pytest.ini` (`--cov-fail-under=90`)
+- Coverage is enforced automatically by `pyproject.toml` (`--cov-fail-under=90`)
 - Use the `client` fixture for API testing (FastAPI TestClient)
 - Use the `meals` fixture for tests that need pre-seeded meal data
+- Use `create_meal_factory` / `create_protein_factory` fixtures to create records via the API without inline boilerplate
+- Use `ai_env` fixture (context manager) to enable AI in a test: `with ai_env: ...`
 - AI tests mock `_call_anthropic` / `_call_openai` — never make real API calls
 - `MEAL_DEFAULTS` dict provides default field values for creating test meals
 - Every test gets a fresh in-memory SQLite database — no test isolation concerns

@@ -105,11 +105,26 @@ def db_session(tmp_path):
 def meals(client):
     """Seed the meal library with five varied test meals."""
     seed = [
-        {**MEAL_DEFAULTS, "name": "Chicken Stir Fry",   "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": True,  "protein": "Chicken"},
-        {**MEAL_DEFAULTS, "name": "Beef Tacos",          "meal_type": "home_cooked", "has_leftovers": False, "easy_to_make": True,  "protein": "Beef"},
-        {**MEAL_DEFAULTS, "name": "Pasta Bolognese",     "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": False, "protein": "Beef"},
-        {**MEAL_DEFAULTS, "name": "Veggie Curry",        "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": True,  "protein": "Tofu"},
-        {**MEAL_DEFAULTS, "name": "Salmon Bowl",         "meal_type": "home_cooked", "has_leftovers": False, "easy_to_make": False, "protein": "Fish"},
+        {
+            **MEAL_DEFAULTS, "name": "Chicken Stir Fry", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": True, "protein": "Chicken"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Beef Tacos", "meal_type": "home_cooked",
+            "has_leftovers": False, "easy_to_make": True, "protein": "Beef"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Pasta Bolognese", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": False, "protein": "Beef"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Veggie Curry", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": True, "protein": "Tofu"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Salmon Bowl", "meal_type": "home_cooked",
+            "has_leftovers": False, "easy_to_make": False, "protein": "Fish"
+        },
     ]
     created = []
     for m in seed:
@@ -117,3 +132,33 @@ def meals(client):
         assert r.status_code == 201, r.text
         created.append(r.json())
     return created
+
+
+@pytest.fixture()
+def create_meal_factory(client):
+    """Return a factory function that creates a meal via the API."""
+    def _create(name="Test Pasta", **kwargs):
+        payload = {**MEAL_DEFAULTS, "name": name, "meal_type": "home_cooked", **kwargs}
+        r = client.post("/api/meals", json=payload)
+        assert r.status_code == 201, r.text
+        return r.json()
+    return _create
+
+
+@pytest.fixture()
+def create_protein_factory(client):
+    """Return a factory function that creates a protein via the API."""
+    def _create(name="TestProtein", display_name=None, **kwargs):
+        payload = {"protein_name": name, "display_name": display_name or name, **kwargs}
+        r = client.post("/api/inventory/proteins", json=payload)
+        assert r.status_code == 201, r.text
+        return r.json()
+    return _create
+
+
+@pytest.fixture()
+def ai_env():
+    """Patch environment for AI-enabled tests."""
+    from unittest.mock import patch
+    import os
+    return patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"})

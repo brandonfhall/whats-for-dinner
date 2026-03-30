@@ -36,7 +36,7 @@ jobs:
       - name: Lint with flake8
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run Tests
         env:
@@ -59,7 +59,7 @@ jobs:
       - name: Verify safelisted classes are present in compiled CSS
         run: |
           docker run --rm app-test:latest sh -c "
-            for cls in bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600; do
+            for cls in bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600 bg-orange-600 border-orange-600; do
               grep -q \"\$cls\" /app/static/css/tailwind.css && echo \"\$cls OK\" || { echo \"\$cls MISSING\"; exit 1; }
             done
           "

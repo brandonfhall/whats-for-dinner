@@ -58,6 +58,7 @@ def test_accessibility_attributes_exist():
     assert 'role="dialog" aria-modal="true" aria-label="Day editor"' in html
     assert 'role="dialog" aria-modal="true" aria-label="Confirm clear week"' in html
     assert 'role="dialog" aria-modal="true" aria-label="Meal editor"' in html
+    assert 'role="dialog" aria-modal="true" aria-label="Confirm AI plan generation"' in html
 
 
 # ── input.css safelist ────────────────────────────────────────────────────────

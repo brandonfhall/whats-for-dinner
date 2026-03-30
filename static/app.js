@@ -51,6 +51,10 @@ function app() {
     confirmClearOpen: false,
     clearingWeek: false,
 
+    // ── AI generate confirm ──────────────────────────────────
+    confirmAIOpen: false,
+    pendingAIMode: null,
+
     // ── Day editor ──────────────────────────────────────────
     dayEditorOpen: false,
     editingDay: null,
@@ -435,6 +439,24 @@ function app() {
         this.activeTab = 'settings';
         return;
       }
+      const days = this.currentPlan.days || [];
+      const allDaysPlanned = days.length === 7 && days.every(d =>
+        d.day_type !== 'skip' || (d.custom_name && d.custom_name.trim())
+      );
+      if (this.currentPlan.ai_generated || allDaysPlanned) {
+        this.pendingAIMode = mode;
+        this.confirmAIOpen = true;
+        return;
+      }
+      await this.runGenerateAI(mode);
+    },
+
+    async confirmGenerateAI() {
+      this.confirmAIOpen = false;
+      await this.runGenerateAI(this.pendingAIMode);
+    },
+
+    async runGenerateAI(mode) {
       this.aiLoading = true;
       this.aiError = null;
       this.aiSuccess = false;

@@ -520,3 +520,4 @@ These items were identified in the review but excluded from the plan as over-eng
 - **Splitting test_ai.py** — 661 lines is large but manageable
 - **Server-side meal filtering** — client-side is fine for <100 meals
 - **CSP `unsafe-eval` removal** — Alpine.js requires it, this is expected behavior
+
