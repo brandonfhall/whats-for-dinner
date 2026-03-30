@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from sqlalchemy import create_engine, text
@@ -46,13 +47,8 @@ def backup_db(reason: str = "manual") -> Path | None:
     dest = BACKUP_DIR / f"dinner_{reason}_{ts}.db"
 
     # Use SQLite backup API for consistency (no partial writes)
-    src_conn = sqlite3.connect(src)
-    dst_conn = sqlite3.connect(dest)
-    try:
+    with closing(sqlite3.connect(src)) as src_conn, closing(sqlite3.connect(dest)) as dst_conn:
         src_conn.backup(dst_conn)
-    finally:
-        dst_conn.close()
-        src_conn.close()
 
     logger.info("Database backup created | %s (%s)", dest.name, reason)
 
@@ -84,13 +80,8 @@ def _weekly_backup():
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     dest = BACKUP_DIR / f"dinner_weekly_{week_label}_{ts}.db"
 
-    src_conn = sqlite3.connect(src)
-    dst_conn = sqlite3.connect(dest)
-    try:
+    with closing(sqlite3.connect(src)) as src_conn, closing(sqlite3.connect(dest)) as dst_conn:
         src_conn.backup(dst_conn)
-    finally:
-        dst_conn.close()
-        src_conn.close()
 
     logger.info("Weekly backup created | %s", dest.name)
 

@@ -77,11 +77,10 @@ def test_adjust_nonexistent_protein_returns_404(client):
     assert r.status_code == 404
 
 
-def test_create_protein_negative_quantity_floors_at_zero(client):
+def test_create_protein_negative_quantity_rejected(client):
     payload = {"protein_name": "Bison", "display_name": "Bison", "quantity": -5}
     r = client.post("/api/inventory/proteins", json=payload)
-    assert r.status_code == 201
-    assert r.json()["quantity"] == 0
+    assert r.status_code == 422
 
 
 def test_update_protein_not_found_returns_404(client):
@@ -89,11 +88,10 @@ def test_update_protein_not_found_returns_404(client):
     assert r.status_code == 404
 
 
-def test_update_protein_negative_quantity_floors_at_zero(client):
+def test_update_protein_negative_quantity_rejected(client):
     client.post("/api/inventory/proteins", json={"protein_name": "Elk", "display_name": "Elk"})
     r = client.put("/api/inventory/proteins/Elk", json={"quantity": -3})
-    assert r.status_code == 200
-    assert r.json()["quantity"] == 0
+    assert r.status_code == 422
 
 
 def test_update_protein_emoji(client):

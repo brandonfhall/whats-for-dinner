@@ -106,6 +106,10 @@ function app() {
       return res.json();
     },
 
+    handleError(msg, e) {
+      alert(msg + ': ' + e.message);
+    },
+
     // ── Loaders ─────────────────────────────────────────────
     async loadCurrentPlan() {
       this.currentPlan = await this.api('GET', '/plans/current');
@@ -365,7 +369,7 @@ function app() {
         this.dayEditorOpen = false;
         this.loadMeals(); // refresh times_used counts
       } catch (e) {
-        alert('Failed to save: ' + e.message);
+        this.handleError('Failed to save', e);
       } finally {
         this.daySaving = false;
       }
@@ -395,7 +399,7 @@ function app() {
         }
         this.mealEditorOpen = false;
       } catch (e) {
-        alert('Failed to save: ' + e.message);
+        this.handleError('Failed to save', e);
       } finally {
         this.mealSaving = false;
       }
@@ -409,7 +413,7 @@ function app() {
         this.meals = this.meals.filter(m => m.id !== this.editingMeal.id);
         this.mealEditorOpen = false;
       } catch (e) {
-        alert('Failed to delete: ' + e.message);
+        this.handleError('Failed to delete', e);
       }
     },
 
@@ -528,7 +532,7 @@ function app() {
         const idx = this.meals.findIndex(m => m.id === meal.id);
         if (idx >= 0) this.meals[idx] = updated;
       } catch (e) {
-        alert('Failed to adjust: ' + e.message);
+        this.handleError('Failed to adjust', e);
       }
     },
 
@@ -543,7 +547,7 @@ function app() {
         const idx = this.proteinInventory.findIndex(p => p.protein_name === proteinName);
         if (idx >= 0) this.proteinInventory[idx] = updated;
       } catch (e) {
-        alert('Failed to adjust: ' + e.message);
+        this.handleError('Failed to adjust', e);
       }
     },
 
@@ -557,7 +561,7 @@ function app() {
         this.addProteinForm = { protein_name: '', display_name: '', emoji: '', group: 'meat', unit: 'servings' };
         this.addProteinOpen = false;
       } catch (e) {
-        alert('Failed to add: ' + e.message);
+        this.handleError('Failed to add', e);
       }
     },
 
@@ -573,7 +577,7 @@ function app() {
         if (idx >= 0) this.proteinInventory[idx] = updated;
         this.editProteinName = null;
       } catch (e) {
-        alert('Failed to save: ' + e.message);
+        this.handleError('Failed to save', e);
       }
     },
 
@@ -583,7 +587,7 @@ function app() {
         await this.api('DELETE', `/inventory/proteins/${encodeURIComponent(proteinName)}`);
         this.proteinInventory = this.proteinInventory.filter(p => p.protein_name !== proteinName);
       } catch (e) {
-        alert('Failed to delete: ' + e.message);
+        this.handleError('Failed to delete', e);
       }
     },
 
@@ -594,7 +598,7 @@ function app() {
       try {
         this.shoppingList = await this.api('GET', `/plans/${this.currentPlan.id}/shopping-list`);
       } catch (e) {
-        alert('Failed to load shopping list: ' + e.message);
+        this.handleError('Failed to load shopping list', e);
       } finally {
         this.shoppingListLoading = false;
       }
@@ -621,7 +625,7 @@ function app() {
         this.settingsSaved = true;
         setTimeout(() => { this.settingsSaved = false; }, 3000);
       } catch (e) {
-        alert('Failed to save settings: ' + e.message);
+        this.handleError('Failed to save settings', e);
       } finally {
         this.settingsSaving = false;
       }

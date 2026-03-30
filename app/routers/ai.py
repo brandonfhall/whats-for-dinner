@@ -13,10 +13,10 @@ from app.database import get_db
 from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus, ProteinInventory
 from app.schemas import AIGenerateRequest, AIGenerateResponse, AIDaySuggestion
 from app.routers.settings import get_all_settings
+from app.utils import DAY_NAMES, sunday_of
+from app.routers.plans import _build_plan_days, _load_plan
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-
-DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 
 def _check_configured(provider: str) -> tuple[bool, str | None]:
@@ -224,9 +224,10 @@ def _call_anthropic(prompt: str) -> list[dict]:
     key = os.getenv("AI_API_KEY")
     if not key:
         raise ValueError("AI_API_KEY is not set in your .env file.")
-    client = anthropic.Anthropic(api_key=key)
+    timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    client = anthropic.Anthropic(api_key=key, timeout=timeout)
     message = client.messages.create(
-        model="claude-sonnet-4-6",
+        model=os.getenv("AI_MODEL_ANTHROPIC", "claude-sonnet-4-6"),
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
         system="You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
@@ -240,9 +241,10 @@ def _call_openai(prompt: str) -> list[dict]:
     key = os.getenv("AI_API_KEY")
     if not key:
         raise ValueError("AI_API_KEY is not set in your .env file.")
-    client = OpenAI(api_key=key)
+    timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    client = OpenAI(api_key=key, timeout=timeout)
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=os.getenv("AI_MODEL_OPENAI", "gpt-4o"),
         messages=[
             {
                 "role": "system",
@@ -345,7 +347,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     configured, reason = _check_configured(provider)
     if not configured:
         if reason is None:
-            raise HTTPException(status_code=400, detail="AI is disabled (AI_PROVIDER=none).")
+            raise HTTPException(status_code=503, detail="AI is disabled (AI_PROVIDER=none).")
         raise HTTPException(status_code=503, detail=reason)
 
     logger.info(
@@ -358,15 +360,16 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
             raw_suggestions = _call_openai(prompt)
         else:
             raw_suggestions = _call_anthropic(prompt)
-    except Exception as exc:
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.error("AI generate failed | provider=%s error=%s", provider, exc)
         raise HTTPException(status_code=500, detail=f"AI request failed: {exc}") from exc
+    except Exception as exc:
+        logger.error("AI generate failed | provider=%s error=%s", provider, exc)
+        raise HTTPException(status_code=502, detail=f"AI provider error: {exc}") from exc
     logger.info("AI generate complete | %.1fs suggestions=%d", time.perf_counter() - t0, len(raw_suggestions))
 
     # get or create the plan
-    from app.routers.plans import _sunday_of, _build_plan_days, _load_plan
-
-    week_start = _sunday_of(payload.week_start)
+    week_start = sunday_of(payload.week_start)
     plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
     if payload.existing_plan_id:
         plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == payload.existing_plan_id).first()
