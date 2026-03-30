@@ -13,10 +13,10 @@ from app.database import get_db
 from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus, ProteinInventory
 from app.schemas import AIGenerateRequest, AIGenerateResponse, AIDaySuggestion
 from app.routers.settings import get_all_settings
+from app.utils import DAY_NAMES, sunday_of
+from app.routers.plans import _build_plan_days, _load_plan
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-
-DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 
 def _check_configured(provider: str) -> tuple[bool, str | None]:
@@ -364,9 +364,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     logger.info("AI generate complete | %.1fs suggestions=%d", time.perf_counter() - t0, len(raw_suggestions))
 
     # get or create the plan
-    from app.routers.plans import _sunday_of, _build_plan_days, _load_plan
-
-    week_start = _sunday_of(payload.week_start)
+    week_start = sunday_of(payload.week_start)
     plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
     if payload.existing_plan_id:
         plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == payload.existing_plan_id).first()

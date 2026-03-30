@@ -1,12 +1,13 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Meal, PlanDay
 from app.schemas import MealCreate, MealOut, MealUpdate
+from app.utils import get_or_404
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
 logger = logging.getLogger(__name__)
@@ -54,18 +55,14 @@ def create_meal(payload: MealCreate, db: Session = Depends(get_db)):
 
 @router.get("/{meal_id}", response_model=MealOut)
 def get_meal(meal_id: int, db: Session = Depends(get_db)):
-    meal = db.query(Meal).filter(Meal.id == meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
+    meal = get_or_404(db, Meal, detail="Meal not found", id=meal_id)
     counts = _usage_counts(db)
     return _with_usage(meal, counts)
 
 
 @router.put("/{meal_id}", response_model=MealOut)
 def update_meal(meal_id: int, payload: MealUpdate, db: Session = Depends(get_db)):
-    meal = db.query(Meal).filter(Meal.id == meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
+    meal = get_or_404(db, Meal, detail="Meal not found", id=meal_id)
     for field, value in payload.model_dump(exclude_none=True).items():
         if field in ("frozen_quantity", "protein_servings") and value is not None:
             value = max(0, value)
@@ -78,9 +75,7 @@ def update_meal(meal_id: int, payload: MealUpdate, db: Session = Depends(get_db)
 
 @router.delete("/{meal_id}", status_code=204)
 def delete_meal(meal_id: int, db: Session = Depends(get_db)):
-    meal = db.query(Meal).filter(Meal.id == meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
+    meal = get_or_404(db, Meal, detail="Meal not found", id=meal_id)
     logger.info("Meal deactivated | %r", meal.name)
     meal.active = False
     db.commit()
@@ -89,9 +84,7 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)):
 @router.patch("/{meal_id}/frozen-quantity", response_model=MealOut)
 def adjust_frozen_quantity(meal_id: int, delta: int, db: Session = Depends(get_db)):
     """Increment or decrement frozen_quantity by delta."""
-    meal = db.query(Meal).filter(Meal.id == meal_id).first()
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
+    meal = get_or_404(db, Meal, detail="Meal not found", id=meal_id)
     meal.frozen_quantity = max(0, meal.frozen_quantity + delta)
     db.commit()
     db.refresh(meal)

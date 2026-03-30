@@ -54,6 +54,23 @@ def client(tmp_path):
 
 
 @pytest.fixture()
+def db_session(tmp_path):
+    """Raw SQLAlchemy session backed by a fresh per-test SQLite database."""
+    from app import models  # noqa — register ORM models with Base
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'test_utils.db'}",
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture()
 def meals(client):
     """Seed the meal library with five varied test meals."""
     seed = [
