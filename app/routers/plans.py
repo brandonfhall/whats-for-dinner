@@ -182,7 +182,7 @@ def get_plan(plan_id: int, db: Session = Depends(get_db)):
 def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Depends(get_db)):
     if dow < 0 or dow > 6:
         raise HTTPException(status_code=422, detail="day_of_week must be 0-6")
-    plan = get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
+    get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
 
     day = db.query(PlanDay).filter(PlanDay.plan_id == plan_id, PlanDay.day_of_week == dow).first()
     if not day:

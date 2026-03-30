@@ -3,8 +3,6 @@
 from datetime import date, timedelta
 from unittest.mock import patch
 
-import pytest
-
 from app.utils import sunday_of as _sunday_of
 
 

@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
@@ -238,29 +237,77 @@ DEFAULT_PROTEINS = [
 
 DEMO_MEALS = [
     # Home cooked — varied proteins, cuisines, flags
-    {"name": "Chicken Stir Fry",       "meal_type": "home_cooked", "protein": "Chicken",  "cuisine": "Asian",         "easy_to_make": True,  "protein_servings": 2},
-    {"name": "Spaghetti Bolognese",    "meal_type": "home_cooked", "protein": "Beef",     "cuisine": "Italian",       "has_leftovers": True,  "protein_servings": 2},
-    {"name": "Tacos",                  "meal_type": "home_cooked", "protein": "Beef",     "cuisine": "Mexican",       "easy_to_make": True},
-    {"name": "Grilled Salmon",         "meal_type": "home_cooked", "protein": "Fish",     "cuisine": "Mediterranean", "protein_servings": 2},
-    {"name": "Pad Thai",               "meal_type": "home_cooked", "protein": "Chicken",  "cuisine": "Thai",          "easy_to_make": True},
-    {"name": "Chicken Parmesan",       "meal_type": "home_cooked", "protein": "Chicken",  "cuisine": "Italian",       "has_leftovers": True,  "protein_servings": 2},
-    {"name": "Beef Stew",              "meal_type": "home_cooked", "protein": "Beef",     "cuisine": "American",      "has_leftovers": True,  "protein_servings": 2},
-    {"name": "Tofu Buddha Bowl",       "meal_type": "home_cooked", "protein": "Tofu",     "cuisine": "Asian",         "easy_to_make": True},
-    {"name": "Pork Chops",             "meal_type": "home_cooked", "protein": "Pork",     "cuisine": "American",      "protein_servings": 2},
-    {"name": "Chicken Tikka Masala",   "meal_type": "home_cooked", "protein": "Chicken",  "cuisine": "Indian",        "has_leftovers": True,  "protein_servings": 2},
-    {"name": "Fish Tacos",             "meal_type": "home_cooked", "protein": "Fish",     "cuisine": "Mexican",       "easy_to_make": True},
-    {"name": "Egg Fried Rice",         "meal_type": "home_cooked", "protein": "Eggs",     "cuisine": "Asian",         "easy_to_make": True},
-    {"name": "Lamb Gyros",             "meal_type": "home_cooked", "protein": "Lamb",     "cuisine": "Mediterranean", "protein_servings": 2},
-    {"name": "Turkey Burgers",         "meal_type": "home_cooked", "protein": "Turkey",   "cuisine": "American",      "easy_to_make": True},
+    {
+        "name": "Chicken Stir Fry", "meal_type": "home_cooked", "protein": "Chicken",
+        "cuisine": "Asian", "easy_to_make": True, "protein_servings": 2
+    },
+    {
+        "name": "Spaghetti Bolognese", "meal_type": "home_cooked", "protein": "Beef",
+        "cuisine": "Italian", "has_leftovers": True, "protein_servings": 2
+    },
+    {
+        "name": "Tacos", "meal_type": "home_cooked", "protein": "Beef",
+        "cuisine": "Mexican", "easy_to_make": True
+    },
+    {
+        "name": "Grilled Salmon", "meal_type": "home_cooked", "protein": "Fish",
+        "cuisine": "Mediterranean", "protein_servings": 2
+    },
+    {
+        "name": "Pad Thai", "meal_type": "home_cooked", "protein": "Chicken",
+        "cuisine": "Thai", "easy_to_make": True
+    },
+    {
+        "name": "Chicken Parmesan", "meal_type": "home_cooked", "protein": "Chicken",
+        "cuisine": "Italian", "has_leftovers": True, "protein_servings": 2
+    },
+    {
+        "name": "Beef Stew", "meal_type": "home_cooked", "protein": "Beef",
+        "cuisine": "American", "has_leftovers": True, "protein_servings": 2
+    },
+    {
+        "name": "Tofu Buddha Bowl", "meal_type": "home_cooked", "protein": "Tofu",
+        "cuisine": "Asian", "easy_to_make": True
+    },
+    {
+        "name": "Pork Chops", "meal_type": "home_cooked", "protein": "Pork",
+        "cuisine": "American", "protein_servings": 2
+    },
+    {
+        "name": "Chicken Tikka Masala", "meal_type": "home_cooked", "protein": "Chicken",
+        "cuisine": "Indian", "has_leftovers": True, "protein_servings": 2
+    },
+    {
+        "name": "Fish Tacos", "meal_type": "home_cooked", "protein": "Fish",
+        "cuisine": "Mexican", "easy_to_make": True
+    },
+    {
+        "name": "Egg Fried Rice", "meal_type": "home_cooked", "protein": "Eggs",
+        "cuisine": "Asian", "easy_to_make": True
+    },
+    {
+        "name": "Lamb Gyros", "meal_type": "home_cooked", "protein": "Lamb",
+        "cuisine": "Mediterranean", "protein_servings": 2
+    },
+    {
+        "name": "Turkey Burgers", "meal_type": "home_cooked", "protein": "Turkey",
+        "cuisine": "American", "easy_to_make": True
+    },
     # Frozen
-    {"name": "Frozen Chili",           "meal_type": "frozen",      "protein": "Beef",     "cuisine": "American",      "frozen_quantity": 3, "has_leftovers": True},
-    {"name": "Frozen Lasagna",         "meal_type": "frozen",      "protein": "Beef",     "cuisine": "Italian",       "frozen_quantity": 2},
+    {
+        "name": "Frozen Chili", "meal_type": "frozen", "protein": "Beef",
+        "cuisine": "American", "frozen_quantity": 3, "has_leftovers": True
+    },
+    {
+        "name": "Frozen Lasagna", "meal_type": "frozen", "protein": "Beef",
+        "cuisine": "Italian", "frozen_quantity": 2
+    },
     # Eat out
-    {"name": "Chipotle",              "meal_type": "eat_out",     "cuisine": "Mexican"},
-    {"name": "Pizza Night",           "meal_type": "eat_out",     "cuisine": "Italian"},
-    {"name": "Sushi Restaurant",      "meal_type": "eat_out",     "cuisine": "Japanese"},
+    {"name": "Chipotle", "meal_type": "eat_out", "cuisine": "Mexican"},
+    {"name": "Pizza Night", "meal_type": "eat_out", "cuisine": "Italian"},
+    {"name": "Sushi Restaurant", "meal_type": "eat_out", "cuisine": "Japanese"},
     # Other
-    {"name": "Leftovers",             "meal_type": "other"},
+    {"name": "Leftovers", "meal_type": "other"},
 ]
 
 DEMO_PROTEIN_QUANTITIES = {
@@ -294,7 +341,7 @@ def _seed_demo_data():
                 row.quantity = qty
         db.commit()
         logger.info("Demo mode: seeded %d meals and %d protein quantities",
-                     len(DEMO_MEALS), len(DEMO_PROTEIN_QUANTITIES))
+                    len(DEMO_MEALS), len(DEMO_PROTEIN_QUANTITIES))
     finally:
         db.close()
 
