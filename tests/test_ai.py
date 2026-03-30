@@ -164,14 +164,14 @@ def test_generate_requires_meals_in_library(client):
     assert "meals" in r.json()["detail"].lower()
 
 
-def test_generate_disabled_provider_returns_400(client, meals):
+def test_generate_disabled_provider_returns_503(client, meals):
     plan = client.get("/api/plans/current").json()
     with patch.dict(os.environ, {"AI_PROVIDER": "none"}):
         r = client.post("/api/ai/generate", json={
             "week_start": plan["week_start"],
             "existing_plan_id": plan["id"],
         })
-    assert r.status_code == 400
+    assert r.status_code == 503
 
 
 def test_generate_missing_key_returns_503(client, meals):
@@ -538,8 +538,8 @@ def test_generate_on_hand_mode_mocked(client, meals):
     assert len(r.json()["suggestions"]) == 7
 
 
-def test_generate_ai_error_returns_500(client, meals):
-    """When the AI provider raises an error, generate returns 500."""
+def test_generate_ai_provider_error_returns_502(client, meals):
+    """When the AI provider raises a generic error (e.g. network), generate returns 502."""
     plan = client.get("/api/plans/current").json()
 
     with patch("app.routers.ai._call_anthropic", side_effect=RuntimeError("API unavailable")):
@@ -549,7 +549,7 @@ def test_generate_ai_error_returns_500(client, meals):
                 "existing_plan_id": plan["id"],
             })
 
-    assert r.status_code == 500
+    assert r.status_code == 502
     assert "API unavailable" in r.json()["detail"]
 
 
@@ -658,3 +658,23 @@ def test_generate_with_history_and_week_notes(client, meals):
 
     assert r.status_code == 200
     assert len(r.json()["suggestions"]) == 7
+
+
+# ── Config env vars ───────────────────────────────────────────────────────────
+
+def test_ai_model_anthropic_env_override():
+    """AI_MODEL_ANTHROPIC env var is forwarded to the Anthropic messages.create call."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_anthropic
+
+    mock_instance = MagicMock()
+    mock_instance.messages.create.return_value = MagicMock(
+        content=[MagicMock(text='[{"day_of_week": 0}]')]
+    )
+
+    with patch("anthropic.Anthropic", return_value=mock_instance):
+        with patch.dict(os.environ, {"AI_API_KEY": "sk-test", "AI_MODEL_ANTHROPIC": "claude-opus-4-6"}):
+            _call_anthropic("test prompt")
+
+    call_kwargs = mock_instance.messages.create.call_args
+    assert call_kwargs.kwargs["model"] == "claude-opus-4-6"

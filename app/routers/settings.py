@@ -23,7 +23,10 @@ def get_all_settings(db: Session) -> dict:
     rows = db.query(Setting).all()
     result = dict(DEFAULTS)
     for row in rows:
-        result[row.key] = json.loads(row.value)
+        try:
+            result[row.key] = json.loads(row.value)
+        except (json.JSONDecodeError, TypeError):
+            pass  # skip corrupt values, keep Pydantic defaults
     return result
 
 

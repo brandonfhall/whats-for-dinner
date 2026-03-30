@@ -89,3 +89,16 @@ def test_custom_instructions_update_leaves_other_fields_unchanged(client):
     data = client.get("/api/settings").json()
     assert data["custom_instructions"] == "Vegan"
     assert data["gym_days"] == [1]
+
+
+# ── Resilience ───────────────────────────────────────────────────────────────
+
+def test_corrupt_settings_json_returns_defaults(client_with_db):
+    """A corrupt (non-JSON) value in the DB should be silently skipped; defaults returned."""
+    from app.models import Setting
+    client, db = client_with_db
+    db.add(Setting(key="gym_days", value="not-valid-json{{"))
+    db.commit()
+    r = client.get("/api/settings")
+    assert r.status_code == 200
+    assert r.json()["gym_days"] == []  # default, not the corrupt value
