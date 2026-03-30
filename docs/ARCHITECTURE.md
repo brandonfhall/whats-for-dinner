@@ -214,7 +214,8 @@ Household meal planning web application for two people. Single-container Docker 
 - Shopping list computed on-the-fly (not persisted)
 - Protein seed data auto-populated on first startup if table is empty
 - Demo mode (`DEMO_MODE=true`) seeds sample meals and protein quantities on startup if meals table is empty; follows same guard pattern as protein seeding
-- Non-negative quantities enforced at both code layer (`max(0, ...)`) and DB layer (`CHECK` constraints) for `frozen_quantity`, `protein_servings`, and `protein_inventory.quantity`
+- Non-negative quantities enforced by Pydantic `Field(ge=0)` validators in schemas (returns 422 on violation); delta endpoints (`adjust_frozen_quantity`, `adjust_protein`) additionally floor at 0 via `max(0, ...)`
+- Shared helpers in `app/utils.py`: `get_or_404()` centralises the query-then-404 pattern used across routers; `sunday_of()` and `DAY_NAMES` eliminate duplication between `plans.py` and `ai.py`
 - Automatic database backup before migrations (SQLite backup API); manual backup via `/api/backup`
 - Weekly backup on startup (one per calendar week, skips if already exists)
 - Backup files stored in `data/backups/`, pruned to last 5 per reason (pre_migration, weekly, manual are independent pools)
