@@ -54,6 +54,37 @@ def client(tmp_path):
 
 
 @pytest.fixture()
+def client_with_db(tmp_path):
+    """TestClient + a shared raw session backed by the same per-test SQLite database."""
+    from app import models  # noqa — register ORM models with Base
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'test.db'}",
+        connect_args={"check_same_thread": False},
+    )
+    TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    def override_get_db():
+        db = TestSession()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    with patch("app.main.init_db"):
+        with TestClient(app) as c:
+            db = TestSession()
+            try:
+                yield c, db
+            finally:
+                db.close()
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
 def db_session(tmp_path):
     """Raw SQLAlchemy session backed by a fresh per-test SQLite database."""
     from app import models  # noqa — register ORM models with Base

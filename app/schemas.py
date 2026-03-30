@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models import MealType, DayType, PlanStatus
 
@@ -17,8 +17,8 @@ class MealBase(BaseModel):
     shared_ingredients: str = ""
     protein: str = ""  # e.g. "Chicken", "Beef", "Tofu" — selected from protein_inventory
     cuisine: str = ""  # e.g. "Italian", "Mexican" — selected from a preset list
-    frozen_quantity: int = 0
-    protein_servings: int = 1
+    frozen_quantity: int = Field(default=0, ge=0)
+    protein_servings: int = Field(default=1, ge=0)
 
 
 class MealCreate(MealBase):
@@ -29,8 +29,8 @@ class MealUpdate(MealBase):
     name: Optional[str] = None
     meal_type: Optional[MealType] = None
     active: Optional[bool] = None
-    frozen_quantity: Optional[int] = None
-    protein_servings: Optional[int] = None
+    frozen_quantity: Optional[int] = Field(default=None, ge=0)
+    protein_servings: Optional[int] = Field(default=None, ge=0)
 
 
 class MealOut(MealBase):
@@ -143,7 +143,7 @@ class ProteinInventoryCreate(BaseModel):
     display_name: str
     emoji: str = ""
     group: str = "meat"
-    quantity: float = 0
+    quantity: float = Field(default=0, ge=0)
     unit: str = "servings"
 
 
@@ -151,7 +151,7 @@ class ProteinInventoryUpdate(BaseModel):
     display_name: Optional[str] = None
     emoji: Optional[str] = None
     group: Optional[str] = None
-    quantity: Optional[float] = None
+    quantity: Optional[float] = Field(default=None, ge=0)
     unit: Optional[str] = None
 
 
