@@ -39,6 +39,27 @@ def test_index_html_links_local_alpine():
     assert "/static/vendor/alpine.min.js" in html
 
 
+def test_accessibility_attributes_exist():
+    """Key UI elements must have aria-labels for accessibility."""
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+
+    # aria-labels for icon-only buttons
+    assert 'aria-label="Previous week"' in html
+    assert 'aria-label="Next week"' in html
+    assert 'aria-label="Clear all days this week"' in html
+    assert 'aria-label="Edit meal"' in html
+    assert 'aria-label="Edit protein"' in html
+    assert 'aria-label="Remove protein"' in html
+    assert 'aria-label="Previous month"' in html
+    assert 'aria-label="Next month"' in html
+    assert 'aria-label="Close"' in html
+
+    # aria roles for modals
+    assert 'role="dialog" aria-modal="true" aria-label="Day editor"' in html
+    assert 'role="dialog" aria-modal="true" aria-label="Confirm clear week"' in html
+    assert 'role="dialog" aria-modal="true" aria-label="Meal editor"' in html
+
+
 # ── input.css safelist ────────────────────────────────────────────────────────
 
 # ── Mobile layout regression tests ───────────────────────────────────────────
