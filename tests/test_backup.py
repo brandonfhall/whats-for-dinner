@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.database import backup_db, _weekly_backup, BACKUP_DIR
+from app.database import backup_db, _weekly_backup
 
 
 def _create_test_db(path):

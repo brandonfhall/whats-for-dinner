@@ -105,11 +105,26 @@ def db_session(tmp_path):
 def meals(client):
     """Seed the meal library with five varied test meals."""
     seed = [
-        {**MEAL_DEFAULTS, "name": "Chicken Stir Fry",   "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": True,  "protein": "Chicken"},
-        {**MEAL_DEFAULTS, "name": "Beef Tacos",          "meal_type": "home_cooked", "has_leftovers": False, "easy_to_make": True,  "protein": "Beef"},
-        {**MEAL_DEFAULTS, "name": "Pasta Bolognese",     "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": False, "protein": "Beef"},
-        {**MEAL_DEFAULTS, "name": "Veggie Curry",        "meal_type": "home_cooked", "has_leftovers": True,  "easy_to_make": True,  "protein": "Tofu"},
-        {**MEAL_DEFAULTS, "name": "Salmon Bowl",         "meal_type": "home_cooked", "has_leftovers": False, "easy_to_make": False, "protein": "Fish"},
+        {
+            **MEAL_DEFAULTS, "name": "Chicken Stir Fry", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": True, "protein": "Chicken"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Beef Tacos", "meal_type": "home_cooked",
+            "has_leftovers": False, "easy_to_make": True, "protein": "Beef"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Pasta Bolognese", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": False, "protein": "Beef"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Veggie Curry", "meal_type": "home_cooked",
+            "has_leftovers": True, "easy_to_make": True, "protein": "Tofu"
+        },
+        {
+            **MEAL_DEFAULTS, "name": "Salmon Bowl", "meal_type": "home_cooked",
+            "has_leftovers": False, "easy_to_make": False, "protein": "Fish"
+        },
     ]
     created = []
     for m in seed:

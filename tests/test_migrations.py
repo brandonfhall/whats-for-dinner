@@ -1,9 +1,8 @@
 """Tests for database migration logic (CHECK constraints on existing tables)."""
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, _run_migrations, _add_check_constraints
+from app.database import _add_check_constraints
 
 
 def _create_legacy_db(db_path):

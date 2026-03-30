@@ -10,7 +10,6 @@ from app.database import (
     Base,
     DEMO_MEALS,
     DEMO_PROTEIN_QUANTITIES,
-    DEFAULT_PROTEINS,
     _seed_demo_data,
     _seed_proteins,
 )

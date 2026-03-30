@@ -3,19 +3,21 @@ import logging
 import os
 import time
 from datetime import date, timedelta
+
+import anthropic
 from fastapi import APIRouter, Depends, HTTPException
+from openai import OpenAI
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-logger = logging.getLogger(__name__)
-
 from app.database import get_db
-from app.models import WeeklyPlan, PlanDay, Meal, DayType, PlanStatus, ProteinInventory
-from app.schemas import AIGenerateRequest, AIGenerateResponse, AIDaySuggestion
+from app.models import DayType, Meal, PlanDay, PlanStatus, ProteinInventory, WeeklyPlan
+from app.routers.plans import _build_plan_days
 from app.routers.settings import get_all_settings
+from app.schemas import AIDaySuggestion, AIGenerateRequest, AIGenerateResponse
 from app.utils import DAY_NAMES, sunday_of
-from app.routers.plans import _build_plan_days, _load_plan
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
@@ -135,35 +137,38 @@ def _build_prompt(
 
     if mode == "on_hand":
         mode_instruction = (
-            "SELECTION STYLE — On Hand Only: ONLY suggest meals where the required "
-            "ingredients are currently available. For frozen meals (type='frozen'), "
-            "only suggest them if frozen_quantity > 0. For home-cooked meals, only "
-            "suggest them if the required protein is in stock — the PROTEIN INVENTORY "
-            "below shows current stock, and each meal's protein_servings shows how many "
-            "servings it needs. If there is not enough protein for a meal, do NOT "
-            "suggest it. Meals with no protein set can always be suggested. "
-            "If no meals are available for a night, set day_type to 'skip' "
-            "with a note explaining nothing is in stock. Still apply gym-night and "
-            "eat-out constraints as usual."
+            "SELECTION STYLE — On Hand Only: ONLY suggest meals where the required ingredients are currently available. "
+            "For frozen meals (type='frozen'), only suggest them if frozen_quantity > 0. For home-cooked meals, only "
+            "suggest them if the required protein is in stock — the PROTEIN INVENTORY below shows current stock, and "
+            "each meal's protein_servings shows how many servings it needs. If there is not enough protein for a meal, "
+            "do NOT suggest it. Meals with no protein set can always be suggested. If no meals are available for a night, "
+            "set day_type to 'skip' with a note explaining nothing is in stock. Still apply gym-night and eat-out "
+            "constraints as usual."
         )
     elif mode == "safe":
         mode_instruction = (
-            "SELECTION STYLE — Play It Safe: treat meal selection like a weighted lottery "
-            "that favours proven household favourites. Meals with usage_count ≥ 5 get 3× "
-            "weight; meals with usage_count 0–1 get 0.5× weight. Still include 1–2 "
-            "less-used meals for variety. Do NOT simply pick the top-N by count every "
-            "time — use genuine weighted randomness so the week still feels fresh."
+            "SELECTION STYLE — Play It Safe: treat meal selection like a weighted lottery that favours proven household "
+            "favourites. Meals with usage_count ≥ 5 get 3× weight; meals with usage_count 0–1 get 0.5× weight. Still "
+            "include 1–2 less-used meals for variety. Do NOT simply pick the top-N by count every time — use genuine "
+            "weighted randomness so the week still feels fresh."
         )
     else:
         mode_instruction = (
-            "SELECTION STYLE — Mix It Up: treat meal selection like a weighted lottery "
-            "that favours meals not used recently or infrequently. Meals with usage_count "
-            "0–1 or absent from the last 4 weeks of history get 4× weight; meals used in "
-            "the last 2 weeks get 0.3× weight. Still include 1–2 familiar favourites for "
-            "comfort. Do NOT simply pick the lowest-count meals every time — use genuine "
-            "weighted randomness so results vary each time you are asked."
+            "SELECTION STYLE — Mix It Up: treat meal selection like a weighted lottery that favours meals not used "
+            "recently or infrequently. Meals with usage_count 0–1 or absent from the last 4 weeks of history get 4× "
+            "weight; meals used in the last 2 weeks get 0.3× weight. Still include 1–2 familiar favourites for "
+            "comfort. Do NOT simply pick the lowest-count meals every time — use genuine weighted randomness so "
+            "results vary each time you are asked."
         )
 
+    instr_2 = (
+        '2. For eat-out nights, set day_type to "eat_out" and provide a custom_name'
+        ' like "Pizza place" or "Mexican" — leave meal_id null.'
+    )
+    instr_9 = (
+        "9. Do NOT repeat any existing day notes in your response — they are"
+        " preserved automatically. Only add new information in the notes field."
+    )
     prompt = f"""You are helping plan dinners for a household for the week of {week_start.strftime('%B %d, %Y')}.
 
 MEAL LIBRARY (meals they know and like, with all-time usage_count):
@@ -180,14 +185,14 @@ CONSTRAINTS FOR THIS WEEK:
 
 INSTRUCTIONS:
 1. Suggest a dinner for all 7 nights (Sunday through Saturday, days 0-6).
-2. For eat-out nights, set day_type to "eat_out" and provide a custom_name like "Pizza place" or "Mexican" — leave meal_id null.
+{instr_2}
 3. For gym nights, strongly prefer meals where easy_to_make is true. Set day_type to "home_cooked".
 4. For all other nights, pick from the meal library applying the selection style above.
 5. Try to vary the protein across the week — avoid scheduling the same protein on back-to-back nights when alternatives exist.
 6. Try to vary the cuisine across the week — avoid back-to-back nights with the same cuisine when alternatives exist.
 7. When two consecutive home-cooked nights share ingredients, note it in the notes field.
 8. If a meal has has_leftovers=true, you may note that in the next day's notes.
-9. Do NOT repeat any existing day notes in your response — they are preserved automatically. Only add new information in the notes field.
+{instr_9}
 
 Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 7 objects in this format:
 [
@@ -220,7 +225,6 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
 
 
 def _call_anthropic(prompt: str) -> list[dict]:
-    import anthropic
     key = os.getenv("AI_API_KEY")
     if not key:
         raise ValueError("AI_API_KEY is not set in your .env file.")
@@ -237,7 +241,6 @@ def _call_anthropic(prompt: str) -> list[dict]:
 
 
 def _call_openai(prompt: str) -> list[dict]:
-    from openai import OpenAI
     key = os.getenv("AI_API_KEY")
     if not key:
         raise ValueError("AI_API_KEY is not set in your .env file.")
@@ -321,6 +324,25 @@ def _apply_suggestions(
     return result
 
 
+def _resolve_plan(payload: AIGenerateRequest, week_start: date, settings: dict, db: Session) -> WeeklyPlan:
+    """Return the plan to populate: use existing_plan_id if given, else find or create by week."""
+    if payload.existing_plan_id:
+        plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == payload.existing_plan_id).first()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        return plan
+    plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
+    if plan:
+        return plan
+    plan = WeeklyPlan(week_start=week_start, status=PlanStatus.draft, ai_generated=True)
+    db.add(plan)
+    db.flush()
+    days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
+    db.add_all(days)
+    db.flush()
+    return plan
+
+
 @router.post("/generate", response_model=AIGenerateResponse)
 def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     settings = get_all_settings(db)
@@ -370,18 +392,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
 
     # get or create the plan
     week_start = sunday_of(payload.week_start)
-    plan = db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first()
-    if payload.existing_plan_id:
-        plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == payload.existing_plan_id).first()
-        if not plan:
-            raise HTTPException(status_code=404, detail="Plan not found")
-    if not plan:
-        plan = WeeklyPlan(week_start=week_start, status=PlanStatus.draft, ai_generated=True)
-        db.add(plan)
-        db.flush()
-        days = _build_plan_days(plan.id, settings["gym_days"], settings["eat_out_days"])
-        db.add_all(days)
-        db.flush()
+    plan = _resolve_plan(payload, week_start, settings, db)
 
     plan.ai_generated = True
     valid_meal_ids = {m["id"] for m in library}
