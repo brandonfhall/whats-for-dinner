@@ -10,16 +10,10 @@ from app.schemas import (
     PlanDayUpdate, PlanDayOut, ShoppingListOut, ShoppingListItem, TodayDinnerOut,
 )
 from app.routers.settings import get_all_settings
+from app.utils import DAY_NAMES, sunday_of, get_or_404
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 logger = logging.getLogger(__name__)
-
-DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-
-
-def _sunday_of(d: date) -> date:
-    """Return the Sunday that starts the week containing d."""
-    return d - timedelta(days=(d.weekday() + 1) % 7)
 
 
 def _build_plan_days(plan_id: int, gym_days: list[int], eat_out_days: list[int]) -> list[PlanDay]:
@@ -107,17 +101,17 @@ def list_plans(db: Session = Depends(get_db)):
 
 @router.get("/current", response_model=WeeklyPlanOut)
 def get_or_create_current_plan(db: Session = Depends(get_db)):
-    return _get_or_create_plan(_sunday_of(date.today()), db)
+    return _get_or_create_plan(sunday_of(date.today()), db)
 
 
 @router.get("/week/{week_start}", response_model=WeeklyPlanOut)
 def get_or_create_plan_for_week(week_start: date, db: Session = Depends(get_db)):
-    return _get_or_create_plan(_sunday_of(week_start), db)
+    return _get_or_create_plan(sunday_of(week_start), db)
 
 
 @router.post("", response_model=WeeklyPlanOut, status_code=201)
 def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
-    week_start = _sunday_of(payload.week_start)
+    week_start = sunday_of(payload.week_start)
     if db.query(WeeklyPlan).filter(WeeklyPlan.week_start == week_start).first():
         raise HTTPException(status_code=409, detail="A plan for that week already exists")
     return _get_or_create_plan(week_start, db)
@@ -127,7 +121,7 @@ def create_plan(payload: WeeklyPlanCreate, db: Session = Depends(get_db)):
 def get_today_dinner(db: Session = Depends(get_db)):
     today = date.today()
     dow = (today.weekday() + 1) % 7  # Python Mon=0; convert to Sun=0
-    plan = _get_or_create_plan(_sunday_of(today), db)
+    plan = _get_or_create_plan(sunday_of(today), db)
 
     day = next((d for d in plan.days if d.day_of_week == dow), None)
 
@@ -188,9 +182,7 @@ def get_plan(plan_id: int, db: Session = Depends(get_db)):
 def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Depends(get_db)):
     if dow < 0 or dow > 6:
         raise HTTPException(status_code=422, detail="day_of_week must be 0-6")
-    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    plan = get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
 
     day = db.query(PlanDay).filter(PlanDay.plan_id == plan_id, PlanDay.day_of_week == dow).first()
     if not day:
@@ -213,9 +205,7 @@ def update_day(plan_id: int, dow: int, payload: PlanDayUpdate, db: Session = Dep
 
 @router.put("/{plan_id}/notes", response_model=WeeklyPlanSummary)
 def update_plan_notes(plan_id: int, payload: WeeklyPlanNotesUpdate, db: Session = Depends(get_db)):
-    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    plan = get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
     plan.notes = payload.notes
     db.commit()
     db.refresh(plan)
@@ -224,9 +214,7 @@ def update_plan_notes(plan_id: int, payload: WeeklyPlanNotesUpdate, db: Session 
 
 @router.put("/{plan_id}/status", response_model=WeeklyPlanSummary)
 def update_plan_status(plan_id: int, status: PlanStatus, db: Session = Depends(get_db)):
-    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    plan = get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
     plan.status = status
     db.commit()
     db.refresh(plan)
@@ -236,9 +224,7 @@ def update_plan_status(plan_id: int, status: PlanStatus, db: Session = Depends(g
 
 @router.delete("/{plan_id}", status_code=204)
 def delete_plan(plan_id: int, db: Session = Depends(get_db)):
-    plan = db.query(WeeklyPlan).filter(WeeklyPlan.id == plan_id).first()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    plan = get_or_404(db, WeeklyPlan, detail="Plan not found", id=plan_id)
     db.query(PlanDay).filter(PlanDay.plan_id == plan_id).delete()
     db.delete(plan)
     db.commit()

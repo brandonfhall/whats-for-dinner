@@ -10,6 +10,7 @@ from app.schemas import (
     ProteinInventoryOut,
     ProteinInventoryUpdate,
 )
+from app.utils import get_or_404
 
 router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 logger = logging.getLogger(__name__)
@@ -45,13 +46,7 @@ def update_protein(
     payload: ProteinInventoryUpdate,
     db: Session = Depends(get_db),
 ):
-    entry = (
-        db.query(ProteinInventory)
-        .filter(ProteinInventory.protein_name == protein_name)
-        .first()
-    )
-    if not entry:
-        raise HTTPException(status_code=404, detail="Protein not found")
+    entry = get_or_404(db, ProteinInventory, detail="Protein not found", protein_name=protein_name)
     for field, value in payload.model_dump(exclude_none=True).items():
         if field == "quantity" and value is not None:
             value = max(0, value)
@@ -69,13 +64,7 @@ def adjust_protein(
     db: Session = Depends(get_db),
 ):
     """Increment or decrement protein quantity by delta."""
-    entry = (
-        db.query(ProteinInventory)
-        .filter(ProteinInventory.protein_name == protein_name)
-        .first()
-    )
-    if not entry:
-        raise HTTPException(status_code=404, detail="Protein not found")
+    entry = get_or_404(db, ProteinInventory, detail="Protein not found", protein_name=protein_name)
     entry.quantity = max(0, entry.quantity + delta)
     db.commit()
     db.refresh(entry)
@@ -84,13 +73,7 @@ def adjust_protein(
 
 @router.delete("/proteins/{protein_name}", status_code=204)
 def delete_protein(protein_name: str, db: Session = Depends(get_db)):
-    entry = (
-        db.query(ProteinInventory)
-        .filter(ProteinInventory.protein_name == protein_name)
-        .first()
-    )
-    if not entry:
-        raise HTTPException(status_code=404, detail="Protein not found")
+    entry = get_or_404(db, ProteinInventory, detail="Protein not found", protein_name=protein_name)
     db.delete(entry)
     db.commit()
     logger.info("Protein deleted | %s", protein_name)

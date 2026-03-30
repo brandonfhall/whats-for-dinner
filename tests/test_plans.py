@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.routers.plans import _sunday_of
+from app.utils import sunday_of as _sunday_of
 
 
 # ── Unit tests: _sunday_of helper ────────────────────────────────────────────
