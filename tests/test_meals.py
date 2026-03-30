@@ -3,15 +3,6 @@
 from tests.conftest import MEAL_DEFAULTS
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-def create_meal(client, name="Test Pasta", **kwargs):
-    payload = {**MEAL_DEFAULTS, "name": name, "meal_type": "home_cooked", **kwargs}
-    r = client.post("/api/meals", json=payload)
-    assert r.status_code == 201, r.text
-    return r.json()
-
-
 # ── Create ────────────────────────────────────────────────────────────────────
 
 def test_create_meal_returns_201(client):
@@ -56,31 +47,31 @@ def test_list_meals_empty(client):
     assert r.json() == []
 
 
-def test_list_meals_returns_all_active(client):
-    create_meal(client, "Meal A")
-    create_meal(client, "Meal B")
+def test_list_meals_returns_all_active(client, create_meal_factory):
+    create_meal_factory("Meal A")
+    create_meal_factory("Meal B")
     r = client.get("/api/meals")
     assert r.status_code == 200
     assert len(r.json()) == 2
 
 
-def test_list_meals_sorted_by_name(client):
-    create_meal(client, "Zucchini Pasta")
-    create_meal(client, "Apple Salad")
-    create_meal(client, "Mango Chicken")
+def test_list_meals_sorted_by_name(client, create_meal_factory):
+    create_meal_factory("Zucchini Pasta")
+    create_meal_factory("Apple Salad")
+    create_meal_factory("Mango Chicken")
     names = [m["name"] for m in client.get("/api/meals").json()]
     assert names == sorted(names)
 
 
-def test_list_meals_active_only_excludes_deleted(client):
-    meal = create_meal(client, "Soon To Be Gone")
+def test_list_meals_active_only_excludes_deleted(client, create_meal_factory):
+    meal = create_meal_factory("Soon To Be Gone")
     client.delete(f"/api/meals/{meal['id']}")
     meals = client.get("/api/meals?active_only=true").json()
     assert all(m["id"] != meal["id"] for m in meals)
 
 
-def test_list_meals_active_only_false_includes_deleted(client):
-    meal = create_meal(client, "Deleted But Visible")
+def test_list_meals_active_only_false_includes_deleted(client, create_meal_factory):
+    meal = create_meal_factory("Deleted But Visible")
     client.delete(f"/api/meals/{meal['id']}")
     all_meals = client.get("/api/meals?active_only=false").json()
     ids = [m["id"] for m in all_meals]
@@ -89,8 +80,8 @@ def test_list_meals_active_only_false_includes_deleted(client):
 
 # ── Get ───────────────────────────────────────────────────────────────────────
 
-def test_get_meal_by_id(client):
-    meal = create_meal(client, "Ramen")
+def test_get_meal_by_id(client, create_meal_factory):
+    meal = create_meal_factory("Ramen")
     r = client.get(f"/api/meals/{meal['id']}")
     assert r.status_code == 200
     assert r.json()["name"] == "Ramen"
@@ -103,15 +94,15 @@ def test_get_meal_not_found_returns_404(client):
 
 # ── Update ────────────────────────────────────────────────────────────────────
 
-def test_update_meal_name(client):
-    meal = create_meal(client, "Old Name")
+def test_update_meal_name(client, create_meal_factory):
+    meal = create_meal_factory("Old Name")
     r = client.put(f"/api/meals/{meal['id']}", json={**MEAL_DEFAULTS, "name": "New Name", "meal_type": "home_cooked"})
     assert r.status_code == 200
     assert r.json()["name"] == "New Name"
 
 
-def test_update_meal_protein_and_flags(client):
-    meal = create_meal(client, "Fish Tacos")
+def test_update_meal_protein_and_flags(client, create_meal_factory):
+    meal = create_meal_factory("Fish Tacos")
     r = client.put(f"/api/meals/{meal['id']}", json={
         **MEAL_DEFAULTS,
         "name": "Fish Tacos",
@@ -134,15 +125,15 @@ def test_update_meal_not_found_returns_404(client):
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 
-def test_delete_meal_returns_204(client):
-    meal = create_meal(client, "Doomed Dish")
+def test_delete_meal_returns_204(client, create_meal_factory):
+    meal = create_meal_factory("Doomed Dish")
     r = client.delete(f"/api/meals/{meal['id']}")
     assert r.status_code == 204
 
 
-def test_delete_meal_soft_deletes(client):
+def test_delete_meal_soft_deletes(client, create_meal_factory):
     """Deleted meals set active=False rather than being removed from the DB."""
-    meal = create_meal(client, "Soft Deleted Dish")
+    meal = create_meal_factory("Soft Deleted Dish")
     client.delete(f"/api/meals/{meal['id']}")
     # Still retrievable by ID
     r = client.get(f"/api/meals/{meal['id']}")
@@ -157,9 +148,9 @@ def test_delete_meal_not_found_returns_404(client):
 
 # ── Usage count ───────────────────────────────────────────────────────────────
 
-def test_times_used_reflects_plan_assignments(client):
+def test_times_used_reflects_plan_assignments(client, create_meal_factory):
     """times_used increments each time a meal is assigned to a plan day."""
-    meal = create_meal(client, "Usage Counter Dish")
+    meal = create_meal_factory("Usage Counter Dish")
     assert client.get(f"/api/meals/{meal['id']}").json()["times_used"] == 0
 
     plan = client.get("/api/plans/current").json()
@@ -180,20 +171,20 @@ def test_times_used_reflects_plan_assignments(client):
 
 # ── Cuisine ───────────────────────────────────────────────────────────────────
 
-def test_cuisine_stored_and_returned(client):
-    meal = create_meal(client, "Carbonara", cuisine="Italian")
+def test_cuisine_stored_and_returned(client, create_meal_factory):
+    meal = create_meal_factory("Carbonara", cuisine="Italian")
     assert meal["cuisine"] == "Italian"
     fetched = client.get(f"/api/meals/{meal['id']}").json()
     assert fetched["cuisine"] == "Italian"
 
 
-def test_cuisine_default_empty_string(client):
-    meal = create_meal(client, "Plain Chicken")
+def test_cuisine_default_empty_string(client, create_meal_factory):
+    meal = create_meal_factory("Plain Chicken")
     assert meal["cuisine"] == ""
 
 
-def test_update_meal_cuisine(client):
-    meal = create_meal(client, "Tacos")
+def test_update_meal_cuisine(client, create_meal_factory):
+    meal = create_meal_factory("Tacos")
     r = client.put(f"/api/meals/{meal['id']}", json={**MEAL_DEFAULTS, "name": "Tacos", "cuisine": "Mexican"})
     assert r.status_code == 200
     assert r.json()["cuisine"] == "Mexican"
@@ -214,8 +205,8 @@ def test_create_frozen_meal(client):
     assert data["frozen_quantity"] == 3
 
 
-def test_frozen_quantity_default_zero(client):
-    meal = create_meal(client, "Regular Chicken")
+def test_frozen_quantity_default_zero(client, create_meal_factory):
+    meal = create_meal_factory("Regular Chicken")
     assert meal["frozen_quantity"] == 0
 
 
@@ -253,8 +244,8 @@ def test_adjust_frozen_quantity_not_found(client):
 
 # ── Protein servings ────────────────────────────────────────────────────────
 
-def test_protein_servings_default_is_one(client):
-    meal = create_meal(client, "Simple Meal")
+def test_protein_servings_default_is_one(client, create_meal_factory):
+    meal = create_meal_factory("Simple Meal")
     assert meal["protein_servings"] == 1
 
 
@@ -267,8 +258,8 @@ def test_create_meal_with_protein_servings(client):
     assert r.json()["protein_servings"] == 2
 
 
-def test_update_protein_servings(client):
-    meal = create_meal(client, "Beef Stew")
+def test_update_protein_servings(client, create_meal_factory):
+    meal = create_meal_factory("Beef Stew")
     r = client.put(f"/api/meals/{meal['id']}", json={
         **MEAL_DEFAULTS, "name": "Beef Stew", "protein_servings": 3,
     })
@@ -290,16 +281,16 @@ def test_create_meal_negative_protein_servings_rejected(client):
     assert r.status_code == 422
 
 
-def test_update_meal_negative_frozen_quantity_rejected(client):
-    meal = create_meal(client, "Lasagna", meal_type="frozen")
+def test_update_meal_negative_frozen_quantity_rejected(client, create_meal_factory):
+    meal = create_meal_factory("Lasagna", meal_type="frozen")
     r = client.put(f"/api/meals/{meal['id']}", json={
         **MEAL_DEFAULTS, "name": "Lasagna", "meal_type": "frozen", "frozen_quantity": -10,
     })
     assert r.status_code == 422
 
 
-def test_update_meal_negative_protein_servings_rejected(client):
-    meal = create_meal(client, "Curry")
+def test_update_meal_negative_protein_servings_rejected(client, create_meal_factory):
+    meal = create_meal_factory("Curry")
     r = client.put(f"/api/meals/{meal['id']}", json={
         **MEAL_DEFAULTS, "name": "Curry", "protein_servings": -3,
     })

@@ -29,8 +29,8 @@ def _mock_suggestions(meals: list[dict]) -> list[dict]:
 
 # ── Status endpoint ───────────────────────────────────────────────────────────
 
-def test_ai_status_configured(client):
-    with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+def test_ai_status_configured(client, ai_env):
+    with ai_env:
         r = client.get("/api/ai/status")
     assert r.status_code == 200
     data = r.json()
@@ -77,9 +77,9 @@ def test_check_configured_missing_key():
     assert "AI_API_KEY" in reason
 
 
-def test_check_configured_with_key():
+def test_check_configured_with_key(ai_env):
     from app.routers.ai import _check_configured
-    with patch.dict(os.environ, {"AI_API_KEY": "sk-test"}):
+    with ai_env:
         configured, reason = _check_configured("anthropic")
     assert configured is True
     assert reason is None
@@ -152,10 +152,10 @@ def test_build_prompt_includes_meal_library(client, meals):
 
 # ── Generate endpoint ─────────────────────────────────────────────────────────
 
-def test_generate_requires_meals_in_library(client):
+def test_generate_requires_meals_in_library(client, ai_env):
     """Generation should fail with 400 when the meal library is empty."""
     plan = client.get("/api/plans/current").json()
-    with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+    with ai_env:
         r = client.post("/api/ai/generate", json={
             "week_start": plan["week_start"],
             "existing_plan_id": plan["id"],
@@ -185,13 +185,13 @@ def test_generate_missing_key_returns_503(client, meals):
     assert r.status_code == 503
 
 
-def test_generate_mocked_anthropic(client, meals):
+def test_generate_mocked_anthropic(client, meals, ai_env):
     """Full generate flow with a mocked Anthropic response."""
     plan = client.get("/api/plans/current").json()
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -203,7 +203,7 @@ def test_generate_mocked_anthropic(client, meals):
     assert len(data["suggestions"]) == 7
 
 
-def test_generate_mocked_openai(client, meals):
+def test_generate_mocked_openai(client, meals, ai_env):
     """Full generate flow with a mocked OpenAI response."""
     plan = client.get("/api/plans/current").json()
     suggestions = _mock_suggestions(meals)
@@ -219,7 +219,7 @@ def test_generate_mocked_openai(client, meals):
     assert len(r.json()["suggestions"]) == 7
 
 
-def test_generate_ignores_hallucinated_meal_ids(client, meals):
+def test_generate_ignores_hallucinated_meal_ids(client, meals, ai_env):
     """Meal IDs not in the library should be silently dropped (meal_id → None)."""
     plan = client.get("/api/plans/current").json()
     bad_suggestions = [
@@ -235,7 +235,7 @@ def test_generate_ignores_hallucinated_meal_ids(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=bad_suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -246,12 +246,12 @@ def test_generate_ignores_hallucinated_meal_ids(client, meals):
         assert s["meal_id"] is None
 
 
-def test_generate_marks_plan_as_ai_generated(client, meals):
+def test_generate_marks_plan_as_ai_generated(client, meals, ai_env):
     plan = client.get("/api/plans/current").json()
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -261,7 +261,7 @@ def test_generate_marks_plan_as_ai_generated(client, meals):
     assert updated["ai_generated"] is True
 
 
-def test_generate_creates_plan_when_no_existing_plan_id(client, meals):
+def test_generate_creates_plan_when_no_existing_plan_id(client, meals, ai_env):
     """Omitting existing_plan_id causes generate to create the plan automatically."""
     current = client.get("/api/plans/current").json()
     from datetime import timedelta
@@ -269,7 +269,7 @@ def test_generate_creates_plan_when_no_existing_plan_id(client, meals):
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={"week_start": next_sunday})
 
     assert r.status_code == 200
@@ -411,7 +411,7 @@ def test_build_prompt_omits_week_context_when_none():
     assert "CURRENT WEEK CONTEXT" not in prompt
 
 
-def test_generate_prefixes_ai_notes(client, meals):
+def test_generate_prefixes_ai_notes(client, meals, ai_env):
     """AI-generated notes should be prefixed with 'AI - '."""
     plan = client.get("/api/plans/current").json()
     suggestions = [
@@ -427,7 +427,7 @@ def test_generate_prefixes_ai_notes(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -441,7 +441,7 @@ def test_generate_prefixes_ai_notes(client, meals):
     assert day1["notes"] == ""
 
 
-def test_generate_preserves_existing_notes(client, meals):
+def test_generate_preserves_existing_notes(client, meals, ai_env):
     """Existing day notes must be preserved; AI notes appended on a new line."""
     plan = client.get("/api/plans/current").json()
     # Set an existing note on Sunday (day 0)
@@ -464,7 +464,7 @@ def test_generate_preserves_existing_notes(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -477,7 +477,7 @@ def test_generate_preserves_existing_notes(client, meals):
     assert day0["notes"] == "User note here\nAI - Pairs well with salad"
 
 
-def test_generate_keeps_existing_notes_when_ai_has_none(client, meals):
+def test_generate_keeps_existing_notes_when_ai_has_none(client, meals, ai_env):
     """When AI returns empty notes, existing day notes should not be erased."""
     plan = client.get("/api/plans/current").json()
     client.put(f"/api/plans/{plan['id']}/days/2", json={
@@ -499,7 +499,7 @@ def test_generate_keeps_existing_notes_when_ai_has_none(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -521,13 +521,13 @@ def test_build_prompt_instructs_ai_not_to_repeat_notes():
     assert "Do NOT repeat any existing day notes" in prompt
 
 
-def test_generate_on_hand_mode_mocked(client, meals):
+def test_generate_on_hand_mode_mocked(client, meals, ai_env):
     """Full generate flow with on_hand mode using mocked AI."""
     plan = client.get("/api/plans/current").json()
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -538,12 +538,12 @@ def test_generate_on_hand_mode_mocked(client, meals):
     assert len(r.json()["suggestions"]) == 7
 
 
-def test_generate_ai_provider_error_returns_502(client, meals):
+def test_generate_ai_provider_error_returns_502(client, meals, ai_env):
     """When the AI provider raises a generic error (e.g. network), generate returns 502."""
     plan = client.get("/api/plans/current").json()
 
     with patch("app.routers.ai._call_anthropic", side_effect=RuntimeError("API unavailable")):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -553,13 +553,13 @@ def test_generate_ai_provider_error_returns_502(client, meals):
     assert "API unavailable" in r.json()["detail"]
 
 
-def test_generate_invalid_existing_plan_id_returns_404(client, meals):
+def test_generate_invalid_existing_plan_id_returns_404(client, meals, ai_env):
     """When existing_plan_id doesn't exist, generate returns 404."""
     plan = client.get("/api/plans/current").json()
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": 99999,
@@ -568,7 +568,7 @@ def test_generate_invalid_existing_plan_id_returns_404(client, meals):
     assert r.status_code == 404
 
 
-def test_generate_eat_out_and_skip_day_types(client, meals):
+def test_generate_eat_out_and_skip_day_types(client, meals, ai_env):
     """AI can suggest eat_out and skip day types."""
     plan = client.get("/api/plans/current").json()
     suggestions = [
@@ -589,7 +589,7 @@ def test_generate_eat_out_and_skip_day_types(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -602,7 +602,7 @@ def test_generate_eat_out_and_skip_day_types(client, meals):
     assert result[2]["day_type"] == "skip"
 
 
-def test_generate_invalid_day_type_defaults_to_skip(client, meals):
+def test_generate_invalid_day_type_defaults_to_skip(client, meals, ai_env):
     """AI returning an invalid day_type should default to skip."""
     plan = client.get("/api/plans/current").json()
     suggestions = [
@@ -613,7 +613,7 @@ def test_generate_invalid_day_type_defaults_to_skip(client, meals):
     ]
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": plan["week_start"],
                 "existing_plan_id": plan["id"],
@@ -624,7 +624,7 @@ def test_generate_invalid_day_type_defaults_to_skip(client, meals):
     assert result[0]["day_type"] == "skip"
 
 
-def test_generate_with_history_and_week_notes(client, meals):
+def test_generate_with_history_and_week_notes(client, meals, ai_env):
     """Generate with a prior plan (meals assigned) and current plan notes covers history+context paths."""
     from datetime import timedelta
 
@@ -650,7 +650,7 @@ def test_generate_with_history_and_week_notes(client, meals):
     suggestions = _mock_suggestions(meals)
 
     with patch("app.routers.ai._call_anthropic", return_value=suggestions):
-        with patch.dict(os.environ, {"AI_PROVIDER": "anthropic", "AI_API_KEY": "sk-test"}):
+        with ai_env:
             r = client.post("/api/ai/generate", json={
                 "week_start": current_plan["week_start"],
                 "existing_plan_id": current_plan["id"],
@@ -662,7 +662,7 @@ def test_generate_with_history_and_week_notes(client, meals):
 
 # ── Config env vars ───────────────────────────────────────────────────────────
 
-def test_ai_model_anthropic_env_override():
+def test_ai_model_anthropic_env_override(ai_env):
     """AI_MODEL_ANTHROPIC env var is forwarded to the Anthropic messages.create call."""
     from unittest.mock import MagicMock
     from app.routers.ai import _call_anthropic
@@ -673,8 +673,9 @@ def test_ai_model_anthropic_env_override():
     )
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
-        with patch.dict(os.environ, {"AI_API_KEY": "sk-test", "AI_MODEL_ANTHROPIC": "claude-opus-4-6"}):
-            _call_anthropic("test prompt")
+        with patch.dict(os.environ, {"AI_MODEL_ANTHROPIC": "claude-opus-4-6"}):
+            with ai_env:
+                _call_anthropic("test prompt")
 
     call_kwargs = mock_instance.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
