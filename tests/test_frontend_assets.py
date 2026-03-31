@@ -163,6 +163,45 @@ def test_month_view_shows_other_days_with_custom_text():
     )
 
 
+def test_active_tab_assignments_go_through_switchTab():
+    """All activeTab assignments outside switchTab must use switchTab().
+
+    Direct 'activeTab = ...' assignments bypass hash routing, leaving
+    the URL out of sync with the visible tab.
+    """
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+
+    # In app.js, only allow activeTab assignments inside switchTab itself
+    # and the initial default declaration
+    for i, line in enumerate(js.splitlines(), 1):
+        stripped = line.strip()
+        # Allow the property declaration (activeTab: 'week')
+        if re.match(r"activeTab:\s*'", stripped):
+            continue
+        # Allow assignments inside switchTab (this.activeTab = id)
+        if 'this.activeTab = id' in stripped:
+            continue
+        # Allow hash-restore in init (this.activeTab = hash)
+        if 'this.activeTab = hash' in stripped:
+            continue
+        # Match assignment (=) but not comparison (===, ==)
+        if re.search(r'activeTab\s*(?<!=)=(?!=)', stripped):
+            assert False, (
+                f"app.js:{i}: bare activeTab assignment found — use switchTab() "
+                f"to keep the URL hash in sync: {stripped}"
+            )
+
+    # In index.html, no inline activeTab assignments
+    for i, line in enumerate(html.splitlines(), 1):
+        stripped = line.strip()
+        if re.search(r'activeTab\s*(?<!=)=(?!=)', stripped):
+            assert False, (
+                f"index.html:{i}: bare activeTab assignment found — use switchTab() "
+                f"to keep the URL hash in sync: {stripped}"
+            )
+
+
 def test_input_css_safelists_dynamic_classes():
     """input.css must force-include every class built from template literals.
 

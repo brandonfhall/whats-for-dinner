@@ -88,6 +88,11 @@ function app() {
 
     // ── Init ────────────────────────────────────────────────
     async init() {
+      // Restore tab from URL hash (e.g. #library)
+      const validIds = this.tabs.map(t => t.id);
+      const hash = window.location.hash.replace('#', '');
+      if (validIds.includes(hash)) this.activeTab = hash;
+
       await Promise.all([
         this.loadCurrentPlan(),
         this.loadMeals(),
@@ -95,6 +100,17 @@ function app() {
         this.loadAIStatus(),
         this.loadProteinInventory(),
       ]);
+
+      // Load tab-specific data if we restored a non-default tab
+      if (this.activeTab === 'month') this.loadMonthData();
+
+      // Handle browser back/forward
+      window.addEventListener('hashchange', () => {
+        const id = window.location.hash.replace('#', '');
+        if (validIds.includes(id) && id !== this.activeTab) {
+          this.switchTab(id, true);
+        }
+      });
     },
 
     // ── API helpers ─────────────────────────────────────────
@@ -146,8 +162,9 @@ function app() {
       await this.goToWeek(this.thisWeekStart);
     },
 
-    async switchTab(id) {
+    async switchTab(id, fromHash = false) {
       this.activeTab = id;
+      if (!fromHash) window.location.hash = id;
       if (id === 'library') this.loadMeals();
       if (id === 'inventory') this.loadProteinInventory();
       if (id === 'month') this.loadMonthData();
@@ -436,7 +453,7 @@ function app() {
     async generateAI(mode = 'mix') {
       if (!this.currentPlan) return;
       if (!this.aiConfigured) {
-        this.activeTab = 'settings';
+        this.switchTab('settings');
         return;
       }
       const days = this.currentPlan.days || [];
@@ -543,7 +560,7 @@ function app() {
     async jumpToWeek(dateStr) {
       const d = new Date(dateStr + 'T00:00:00');
       d.setDate(d.getDate() - d.getDay());
-      this.activeTab = 'week';
+      this.switchTab('week');
       await this.goToWeek(d.toLocaleDateString('en-CA'));
     },
 

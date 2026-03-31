@@ -66,7 +66,7 @@
           <!-- AI button with dropdown -->
           <div x-data="{ aiOpen: false }" class="relative" @click.away="aiOpen = false">
             <button
-              @click="aiConfigured && !aiLoading ? (aiOpen = !aiOpen) : (activeTab = 'settings')"
+              @click="aiConfigured && !aiLoading ? (aiOpen = !aiOpen) : switchTab('settings')"
               :disabled="aiLoading || !currentPlan || aiProvider === 'none'"
               :class="aiConfigured ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'"
               class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
