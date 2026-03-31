@@ -95,3 +95,15 @@ def test_security_headers_on_static(client):
     r = client.get("/static/app.js")
     assert r.headers.get("x-content-type-options") == "nosniff"
     assert r.headers.get("x-frame-options") == "SAMEORIGIN"
+
+
+def test_static_assets_cache_control_no_cache(client):
+    """Static files must include Cache-Control: no-cache so deploys take effect immediately."""
+    r = client.get("/static/app.js")
+    assert r.headers.get("cache-control") == "no-cache"
+
+
+def test_api_responses_no_cache_control(client):
+    """API responses should not have the static-asset Cache-Control header."""
+    r = client.get("/api/settings")
+    assert r.headers.get("cache-control") != "no-cache"
