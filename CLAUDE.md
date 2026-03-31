@@ -88,7 +88,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 - **Two people** — household of two, no multi-user features needed
 - **SQLite only** — no plans to move to PostgreSQL
 - **No build step in dev** — Tailwind is compiled at Docker build time only
-- **Offline-capable** — all JS/CSS vendored into the Docker image
+- **No internet required** — all JS/CSS vendored into the Docker image; runs entirely on the local network with no external CDN or API calls at runtime (AI is optional)
 - **AI is optional** — app works fully without any AI provider configured
 
 ## CI/CD Pipelines
