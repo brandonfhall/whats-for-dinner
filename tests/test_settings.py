@@ -1,5 +1,8 @@
 """Tests for the key-value settings store."""
 
+import os
+from unittest.mock import patch
+
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
@@ -10,6 +13,33 @@ def test_get_settings_returns_defaults(client):
     assert data["gym_days"] == []
     assert data["eat_out_days"] == []
     assert data["ai_provider"] == "anthropic"
+
+
+def test_get_settings_ai_key_not_exposed(client):
+    """The raw API key must never appear in GET /settings responses."""
+    client.put("/api/settings", json={"ai_api_key": "sk-secret-123"})
+    r = client.get("/api/settings")
+    assert "ai_api_key" not in r.json()
+    assert "sk-secret-123" not in r.text
+
+
+def test_ai_key_configured_false_by_default(client):
+    with patch.dict(os.environ, {}, clear=True):
+        r = client.get("/api/settings")
+    assert r.json()["ai_key_configured"] is False
+
+
+def test_ai_key_configured_true_after_save(client):
+    r = client.put("/api/settings", json={"ai_api_key": "sk-ant-test"})
+    assert r.status_code == 200
+    assert r.json()["ai_key_configured"] is True
+    assert "ai_api_key" not in r.json()
+
+
+def test_ai_key_configured_true_via_env(client):
+    with patch.dict(os.environ, {"AI_API_KEY": "sk-env-key"}):
+        r = client.get("/api/settings")
+    assert r.json()["ai_key_configured"] is True
 
 
 # ── Update ────────────────────────────────────────────────────────────────────

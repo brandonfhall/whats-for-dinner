@@ -39,6 +39,17 @@ def test_ai_status_configured(client, ai_env):
     assert data["reason"] is None
 
 
+def test_ai_status_configured_via_db_key(client):
+    """AI is configured when the key is stored in settings DB (no env var)."""
+    with patch.dict(os.environ, {"AI_PROVIDER": "anthropic"}, clear=True):
+        client.put("/api/settings", json={"ai_api_key": "sk-db-key"})
+        r = client.get("/api/ai/status")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["configured"] is True
+    assert data["reason"] is None
+
+
 def test_ai_status_missing_key(client):
     """Status endpoint reports not-configured when AI_API_KEY is absent."""
     with patch("app.routers.ai.os.getenv", side_effect=lambda k, *d: "anthropic" if k == "AI_PROVIDER" else ""):
@@ -63,24 +74,22 @@ def test_ai_status_disabled(client):
 
 def test_check_configured_none_provider():
     from app.routers.ai import _check_configured
-    configured, reason = _check_configured("none")
+    configured, reason = _check_configured("none", "")
     assert configured is False
     assert reason is None
 
 
 def test_check_configured_missing_key():
     from app.routers.ai import _check_configured
-    with patch.dict(os.environ, {}, clear=True):
-        configured, reason = _check_configured("anthropic")
+    configured, reason = _check_configured("anthropic", "")
     assert configured is False
     assert reason is not None
     assert "AI_API_KEY" in reason
 
 
-def test_check_configured_with_key(ai_env):
+def test_check_configured_with_key():
     from app.routers.ai import _check_configured
-    with ai_env:
-        configured, reason = _check_configured("anthropic")
+    configured, reason = _check_configured("anthropic", "sk-test")
     assert configured is True
     assert reason is None
 
@@ -662,7 +671,7 @@ def test_generate_with_history_and_week_notes(client, meals, ai_env):
 
 # ── Config env vars ───────────────────────────────────────────────────────────
 
-def test_ai_model_anthropic_env_override(ai_env):
+def test_ai_model_anthropic_env_override():
     """AI_MODEL_ANTHROPIC env var is forwarded to the Anthropic messages.create call."""
     from unittest.mock import MagicMock
     from app.routers.ai import _call_anthropic
@@ -674,8 +683,7 @@ def test_ai_model_anthropic_env_override(ai_env):
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
         with patch.dict(os.environ, {"AI_MODEL_ANTHROPIC": "claude-opus-4-6"}):
-            with ai_env:
-                _call_anthropic("test prompt")
+            _call_anthropic("test prompt", "sk-test")
 
     call_kwargs = mock_instance.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"

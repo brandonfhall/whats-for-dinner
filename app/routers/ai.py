@@ -21,14 +21,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
-def _check_configured(provider: str) -> tuple[bool, str | None]:
+def _resolve_key(settings: dict) -> str:
+    """Return the API key: env var takes precedence, DB setting is the fallback."""
+    return os.getenv("AI_API_KEY") or settings.get("ai_api_key", "")
+
+
+def _check_configured(provider: str, key: str) -> tuple[bool, str | None]:
     """Return (is_configured, reason_if_not).
     reason=None means intentionally disabled (provider='none'), not misconfigured.
     """
     if provider == "none":
         return False, None
-    if not os.getenv("AI_API_KEY"):
-        return False, "AI_API_KEY is not set in your .env file."
+    if not key:
+        return False, "AI_API_KEY is not configured. Set it in Settings or your .env file."
     return True, None
 
 
@@ -36,7 +41,8 @@ def _check_configured(provider: str) -> tuple[bool, str | None]:
 def ai_status(db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
-    configured, reason = _check_configured(provider)
+    key = _resolve_key(settings)
+    configured, reason = _check_configured(provider, key)
     return {"configured": configured, "provider": provider, "reason": reason}
 
 
@@ -224,10 +230,7 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
     return prompt
 
 
-def _call_anthropic(prompt: str) -> list[dict]:
-    key = os.getenv("AI_API_KEY")
-    if not key:
-        raise ValueError("AI_API_KEY is not set in your .env file.")
+def _call_anthropic(prompt: str, key: str) -> list[dict]:
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
     client = anthropic.Anthropic(api_key=key, timeout=timeout)
     message = client.messages.create(
@@ -240,10 +243,7 @@ def _call_anthropic(prompt: str) -> list[dict]:
     return json.loads(raw)
 
 
-def _call_openai(prompt: str) -> list[dict]:
-    key = os.getenv("AI_API_KEY")
-    if not key:
-        raise ValueError("AI_API_KEY is not set in your .env file.")
+def _call_openai(prompt: str, key: str) -> list[dict]:
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
     client = OpenAI(api_key=key, timeout=timeout)
     response = client.chat.completions.create(
@@ -347,6 +347,7 @@ def _resolve_plan(payload: AIGenerateRequest, week_start: date, settings: dict, 
 def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
+    key = _resolve_key(settings)
 
     library = _get_meal_library(db)
     if not library:
@@ -366,7 +367,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         current_week_context=week_context,
     )
 
-    configured, reason = _check_configured(provider)
+    configured, reason = _check_configured(provider, key)
     if not configured:
         if reason is None:
             raise HTTPException(status_code=503, detail="AI is disabled (AI_PROVIDER=none).")
@@ -379,9 +380,9 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     t0 = time.perf_counter()
     try:
         if provider == "openai":
-            raw_suggestions = _call_openai(prompt)
+            raw_suggestions = _call_openai(prompt, key)
         else:
-            raw_suggestions = _call_anthropic(prompt)
+            raw_suggestions = _call_anthropic(prompt, key)
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.error("AI generate failed | provider=%s error=%s", provider, exc)
         raise HTTPException(status_code=500, detail=f"AI request failed: {exc}") from exc
