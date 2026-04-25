@@ -507,8 +507,17 @@ AI_API_KEY=sk-ant-...</pre>
         <!-- AI provider -->
         <div class="px-5 py-4">
           <p class="font-medium text-gray-800 mb-1">AI provider</p>
-          <p class="text-sm text-gray-500 mb-3">Set via the <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> environment variable in your <code class="bg-gray-100 px-1 rounded">.env</code> file. Current value:</p>
-          <span class="inline-block bg-violet-100 text-violet-800 text-sm font-medium px-3 py-1 rounded-full" x-text="settings.ai_provider || 'anthropic'"></span>
+          <p class="text-sm text-gray-500 mb-3">Choose your AI provider. The <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> env var overrides this if set.</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="opt in [{value: 'anthropic', label: 'Anthropic'}, {value: 'openai', label: 'OpenAI'}, {value: 'none', label: 'Disabled'}]" :key="opt.value">
+              <button
+                @click="settings.ai_provider = opt.value"
+                :class="(settings.ai_provider || 'anthropic') === opt.value ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-300'"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                x-text="opt.label"
+              ></button>
+            </template>
+          </div>
         </div>
 
         <!-- AI API key -->

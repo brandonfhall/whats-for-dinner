@@ -662,8 +662,10 @@ function app() {
         this.settings = await this.api('PUT', '/settings', {
           gym_days: this.settings.gym_days,
           eat_out_days: this.settings.eat_out_days,
+          ai_provider: this.settings.ai_provider,
           custom_instructions: this.settings.custom_instructions,
         });
+        await this.loadAIStatus();
         this.settingsSaved = true;
         setTimeout(() => { this.settingsSaved = false; }, 3000);
       } catch (e) {
