@@ -49,6 +49,8 @@ Pin any day so its assignment automatically copies to the same day next week. Us
 ### Settings
 - **Gym nights** — the AI prefers easy-to-make meals on these nights; shown with a gym icon in the planner
 - **Default eat-out nights** — pre-set to "Eating out" whenever a new plan is created
+- **AI provider** — select Anthropic, OpenAI, or Disabled directly in the UI. The `AI_PROVIDER` env var takes precedence if set.
+- **AI API key** — paste your key directly in the UI; stored on the server and never returned by the API. The `AI_API_KEY` env var takes precedence if set.
 - **Custom AI instructions** — free-text field sent with every AI request (dietary preferences, restrictions, cooking style)
 
 ### Smart home integration
@@ -109,8 +111,8 @@ Go to the Meal Library tab and start adding meals. Once you have a few, head to 
 
 | Variable | Default | Description |
 |---|---|---|
-| `AI_PROVIDER` | `anthropic` | `anthropic`, `openai`, or `none` to disable AI |
-| `AI_API_KEY` | — | API key for the configured provider |
+| `AI_PROVIDER` | `anthropic` | `anthropic`, `openai`, or `none` — overrides the Settings UI selector if set |
+| `AI_API_KEY` | — | API key for the configured provider — overrides the Settings UI value if set |
 | `APP_PORT` | `8000` | Port inside the container |
 | `APP_HOSTNAME` | `dinner.home` | Hostname for Traefik routing |
 | `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |

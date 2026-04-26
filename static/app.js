@@ -30,7 +30,7 @@ function app() {
     thisWeekStart: null,   // the actual current week's Sunday (for "Today" button)
     pastPlans: [],
     meals: [],
-    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic', custom_instructions: '' },
+    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic', ai_key_configured: false, custom_instructions: '' },
 
     // ── Week notes ──────────────────────────────────────────
     weekNotes: '',
@@ -46,6 +46,9 @@ function app() {
     // ── Settings UI ─────────────────────────────────────────
     settingsSaving: false,
     settingsSaved: false,
+    aiKeyInput: '',
+    aiKeySaving: false,
+    aiKeySaved: false,
 
     // ── Clear week ──────────────────────────────────────────
     confirmClearOpen: false,
@@ -659,14 +662,34 @@ function app() {
         this.settings = await this.api('PUT', '/settings', {
           gym_days: this.settings.gym_days,
           eat_out_days: this.settings.eat_out_days,
+          ai_provider: this.settings.ai_provider,
           custom_instructions: this.settings.custom_instructions,
         });
+        await this.loadAIStatus();
         this.settingsSaved = true;
         setTimeout(() => { this.settingsSaved = false; }, 3000);
       } catch (e) {
         this.handleError('Failed to save settings', e);
       } finally {
         this.settingsSaving = false;
+      }
+    },
+
+    async saveAiKey() {
+      if (!this.aiKeyInput) return;
+      this.aiKeySaving = true;
+      this.aiKeySaved = false;
+      try {
+        const result = await this.api('PUT', '/settings', { ai_api_key: this.aiKeyInput });
+        this.settings.ai_key_configured = result.ai_key_configured;
+        this.aiKeyInput = '';
+        this.aiKeySaved = true;
+        setTimeout(() => { this.aiKeySaved = false; }, 3000);
+        await this.loadAIStatus();
+      } catch (e) {
+        this.handleError('Failed to save API key', e);
+      } finally {
+        this.aiKeySaving = false;
       }
     },
   };

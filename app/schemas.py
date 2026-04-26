@@ -126,6 +126,7 @@ class SettingsOut(BaseModel):
     gym_days: list[int] = []          # 0=Mon … 6=Sun
     eat_out_days: list[int] = []
     ai_provider: str = "anthropic"
+    ai_key_configured: bool = False   # True when a key is available (env or DB)
     custom_instructions: str = ""
 
 
@@ -133,6 +134,7 @@ class SettingsUpdate(BaseModel):
     gym_days: Optional[list[int]] = None
     eat_out_days: Optional[list[int]] = None
     ai_provider: Optional[str] = None
+    ai_api_key: Optional[str] = None  # write-only; never returned in SettingsOut
     custom_instructions: Optional[str] = None
 
 
