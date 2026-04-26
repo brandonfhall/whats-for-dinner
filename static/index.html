@@ -507,8 +507,46 @@ AI_API_KEY=sk-ant-...</pre>
         <!-- AI provider -->
         <div class="px-5 py-4">
           <p class="font-medium text-gray-800 mb-1">AI provider</p>
-          <p class="text-sm text-gray-500 mb-3">Set via the <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> environment variable in your <code class="bg-gray-100 px-1 rounded">.env</code> file. Current value:</p>
-          <span class="inline-block bg-violet-100 text-violet-800 text-sm font-medium px-3 py-1 rounded-full" x-text="settings.ai_provider || 'anthropic'"></span>
+          <p class="text-sm text-gray-500 mb-3">Choose your AI provider. The <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> env var overrides this if set.</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="opt in [{value: 'anthropic', label: 'Anthropic'}, {value: 'openai', label: 'OpenAI'}, {value: 'none', label: 'Disabled'}]" :key="opt.value">
+              <button
+                @click="settings.ai_provider = opt.value"
+                :class="(settings.ai_provider || 'anthropic') === opt.value ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-300'"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                x-text="opt.label"
+              ></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- AI API key -->
+        <div class="px-5 py-4">
+          <p class="font-medium text-gray-800 mb-1">AI API key</p>
+          <p class="text-sm text-gray-500 mb-3">Stored on the server — never returned by the API. Env var <code class="bg-gray-100 px-1 rounded">AI_API_KEY</code> takes precedence if set.</p>
+          <div x-show="settings.ai_key_configured" class="mb-3">
+            <span class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-full">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              Key configured
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <input
+              type="password"
+              x-model="aiKeyInput"
+              :placeholder="settings.ai_key_configured ? 'Enter a new key to replace the existing one' : 'Paste your API key here'"
+              class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
+            />
+            <button
+              @click="saveAiKey()"
+              :disabled="!aiKeyInput || aiKeySaving"
+              class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+            >
+              <span x-show="!aiKeySaving">Save key</span>
+              <span x-show="aiKeySaving">Saving…</span>
+            </button>
+          </div>
+          <p x-show="aiKeySaved" class="mt-1.5 text-xs text-green-600">✓ Key saved</p>
         </div>
 
         <!-- Custom AI instructions -->
