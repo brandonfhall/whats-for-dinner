@@ -17,11 +17,11 @@ function app() {
   return {
     // ── Navigation ──────────────────────────────────────────
     tabs: [
-      { id: 'week',      label: "This Week",    short: "Week" },
-      { id: 'library',   label: "Meal Library", short: "Library" },
-      { id: 'inventory', label: "Inventory",    short: "Inv." },
-      { id: 'month',     label: "Month View",   short: "Month" },
-      { id: 'settings',  label: "Settings",     short: "⚙️", icon: "/static/assets/settings_icon_transparent.png" },
+      { id: 'week',      label: "Week",     short: "Week" },
+      { id: 'library',   label: "Library",  short: "Meals" },
+      { id: 'inventory', label: "Stock",    short: "Stock" },
+      { id: 'month',     label: "Month",    short: "Month" },
+      { id: 'settings',  label: "Settings", short: "⚙️" },
     ],
     activeTab: 'week',
 
@@ -225,6 +225,32 @@ function app() {
         this.aiConfigured = false;
         this.aiProvider = null;
       }
+    },
+
+    // ── Today helpers ────────────────────────────────────────
+    todayDow() {
+      return new Date().getDay();
+    },
+
+    todayPlanDay() {
+      if (!this.currentPlan) return null;
+      return this.sortedDays(this.currentPlan).find(d => d.day_of_week === this.todayDow()) || null;
+    },
+
+    dayDateFull(weekStart, dow) {
+      if (!weekStart) return '';
+      const d = new Date(weekStart + 'T00:00:00');
+      d.setDate(d.getDate() + dow);
+      return d.toLocaleDateString('en-CA');
+    },
+
+    weekNumber(weekStart) {
+      if (!weekStart) return '';
+      const d = new Date(weekStart + 'T00:00:00');
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+      const week1 = new Date(d.getFullYear(), 0, 4);
+      return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
     },
 
     // ── Week helpers ─────────────────────────────────────────
