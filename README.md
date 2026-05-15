@@ -103,7 +103,7 @@ Visit `http://localhost:8000`. The local compose file enables demo mode by defau
 
 ### 3. Add your meals
 
-Go to the Meal Library tab and start adding meals. Once you have a few, head to This Week and either plan manually or let AI suggest the week.
+Go to the Library tab and start adding meals. Once you have a few, head to Week and either plan manually or let AI suggest the week.
 
 ---
 
@@ -216,7 +216,7 @@ Settings
 
 ## Testing
 
-193 tests covering meals, plans, inventory, settings, AI, security middleware, database migrations, demo mode, and frontend asset configuration. Every test runs against a fresh in-memory SQLite database.
+208 tests covering meals, plans, inventory, settings, AI, security middleware, database migrations, demo mode, and frontend asset configuration. Every test runs against a fresh in-memory SQLite database.
 
 ```bash
 # Set up

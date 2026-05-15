@@ -195,9 +195,10 @@ Household meal planning web application for two people. Single-container Docker 
 ## Frontend Structure
 
 - Single-page application with tab-based navigation and hash-based URL routing (`#week`, `#library`, `#inventory`, `#month`, `#settings`)
-- Tabs: This Week, Meal Library, Inventory, Month View, Settings
+- Tabs: Week, Library, Stock (Inventory), Month, Settings
 - Hash routing enables bookmarkable tabs, browser back/forward navigation, and tab persistence across page refresh
-- Slide-in panel for day editing
+- Navigation: desktop sidebar (220px) with a "Tonight" widget; mobile bottom pill nav
+- Day editor: bottom sheet on mobile, centered modal on desktop
 - Modal for meal create/edit
 - All state managed in one Alpine.js `app()` function
 - All `activeTab` changes go through `switchTab()` to keep the URL hash in sync
