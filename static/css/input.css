@@ -3,11 +3,11 @@
 /* Scan source files for class names */
 @source "../**/*.{html,js}";
 
-/* Brand colour theme */
+/* Brand colour theme (Hearth dusty blue) */
 @theme {
-  --color-brand: #f97316;
-  --color-brand-light: #fed7aa;
-  --color-brand-dark: #c2410c;
+  --color-brand: #3a6e96;
+  --color-brand-light: #c8dbeb;
+  --color-brand-dark: #234a6c;
 }
 
 /* Force-include dynamically constructed classes.

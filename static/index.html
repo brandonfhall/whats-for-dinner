@@ -7,122 +7,549 @@
   <link rel="stylesheet" href="/static/css/tailwind.css">
   <script defer src="/static/vendor/alpine.min.js"></script>
   <style>
+    /* ── Hearth Dusty Blue design system ─────────────────────── */
     [x-cloak] { display: none !important; }
-    .day-card { transition: box-shadow 0.15s, transform 0.15s; }
-    .day-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
-    .slide-panel { transition: transform 0.25s ease, opacity 0.25s ease; }
+
+    :root {
+      --bg: #e6edf3;
+      --surface: #f7faff;
+      --surface-2: #eef3f9;
+      --line: #d4dde8;
+      --line-2: #b3c1d2;
+      --ink: #2a1d12;
+      --ink-2: #5c4630;
+      --muted: #9b8466;
+      --primary: #3a6e96;
+      --primary-deep: #234a6c;
+      --primary-tint: #c8dbeb;
+      --gold-tint: #f4e2b4;
+      --sage: #6a7d4c;
+      --sage-tint: #dde6c9;
+      --plum: #6c4868;
+      --plum-tint: #e9d6e4;
+      --teal-tint: #cfe2de;
+      --red: #a83f2a;
+    }
+
+    html, body { margin: 0; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.005em;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    .wfd-layout { display: flex; flex-direction: column; min-height: 100vh; }
+    .wfd-sidebar { display: none; }
+    .wfd-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 10px; flex-shrink: 0;
+    }
+    .wfd-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .wfd-content { flex: 1; padding: 4px 20px 104px; overflow-y: auto; }
+    .wfd-bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 8px 16px 28px;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border-top: 1px solid var(--line);
+    }
+
+    @media (min-width: 1024px) {
+      html, body { height: 100%; overflow: hidden; }
+      .wfd-layout { flex-direction: row; height: 100%; }
+      .wfd-sidebar {
+        display: flex; flex-direction: column;
+        width: 220px; flex-shrink: 0;
+        padding: 24px 18px; gap: 20px;
+        border-right: 1px solid var(--line);
+        height: 100vh; overflow-y: auto;
+      }
+      .wfd-header { display: none; }
+      .wfd-main { flex: 1; overflow: hidden; }
+      .wfd-content { padding: 28px 36px 36px; }
+      .wfd-bottom-nav { display: none; }
+    }
+
+    /* ── Logo ─────────────────────────────────────────────────── */
+    .wfd-logo { display: flex; align-items: center; gap: 8px; }
+    .wfd-logo-mark {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .wfd-logo-mark-lg { width: 32px; height: 32px; }
+    .wfd-logo-text { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+
+    /* ── Sidebar nav ──────────────────────────────────────────── */
+    .wfd-sidenav-btn {
+      display: block; width: 100%; padding: 10px 12px; border-radius: 12px;
+      text-align: left; font-size: 14px; font-weight: 600; color: var(--muted);
+      background: transparent; border: none; cursor: pointer; font-family: inherit;
+      transition: background .12s, color .12s;
+    }
+    .wfd-sidenav-btn:hover { background: var(--surface-2); color: var(--ink); }
+    .wfd-sidenav-btn.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(43,29,18,0.08); }
+
+    /* ── Bottom pill nav ──────────────────────────────────────── */
+    .wfd-pill-nav {
+      display: flex; align-items: center; gap: 2px;
+      background: var(--surface); border-radius: 999px; padding: 4px;
+      box-shadow: 0 4px 16px -8px rgba(43,29,18,0.15); border: 1px solid var(--line);
+    }
+    .wfd-pill-tab {
+      flex: 1; padding: 7px 4px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      transition: all .12s; text-align: center; white-space: nowrap;
+    }
+    .wfd-pill-tab.active { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(43,29,18,0.08); }
+
+    /* ── Icon buttons ─────────────────────────────────────────── */
+    .wfd-icon-btn {
+      width: 36px; height: 36px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 16px; transition: all .12s;
+    }
+    .wfd-icon-btn:hover { background: var(--surface-2); border-color: var(--line-2); }
+    .wfd-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .wfd-btn {
+      border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 13px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      cursor: pointer; border: none; font-family: inherit;
+      transition: transform .12s, box-shadow .12s, opacity .12s; white-space: nowrap;
+    }
+    .wfd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .wfd-btn-primary { background: var(--ink); color: var(--surface-2); }
+    .wfd-btn-primary:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(43,29,18,0.3); }
+    .wfd-btn-accent { background: var(--primary); color: #fff; }
+    .wfd-btn-accent:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(58,110,150,0.4); }
+    .wfd-btn-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
+    .wfd-btn-secondary:hover { background: var(--surface-2); border-color: var(--line-2); }
+    .wfd-btn-danger-ghost { background: transparent; color: var(--red); border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; }
+    .wfd-btn-danger-ghost:hover { background: #fadcd0; }
+
+    /* ── Day cards ────────────────────────────────────────────── */
+    .wfd-day-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+      padding: 14px; transition: all .15s; cursor: pointer;
+      text-align: left; width: 100%; display: flex; gap: 12px;
+      font-family: inherit;
+    }
+    .wfd-day-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -10px rgba(43,29,18,0.18); border-color: var(--line-2); }
+    .wfd-day-card.today { border-color: var(--primary); border-width: 1.5px; }
+    .wfd-day-card.shimmer { position: relative; overflow: hidden; }
+    .wfd-day-card.shimmer::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+      animation: wfd-shimmer 1.2s infinite;
+    }
+    @keyframes wfd-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+    .wfd-day-rail {
+      background: var(--surface-2); border-radius: 10px; padding: 8px 4px;
+      min-width: 52px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px; flex-shrink: 0;
+    }
+    .wfd-day-dow { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .wfd-day-num { font-size: 22px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; color: var(--ink); }
+    .wfd-day-num.today { color: var(--primary); }
+
+    /* ── Chips ────────────────────────────────────────────────── */
+    .wfd-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: 999px; letter-spacing: -0.01em;
+    }
+    .wfd-chip-meat { background: var(--primary-tint); color: var(--primary-deep); }
+    .wfd-chip-veg { background: var(--sage-tint); color: #3f4d2d; }
+    .wfd-chip-easy { background: var(--gold-tint); color: #6e5418; }
+    .wfd-chip-left { background: var(--teal-tint); color: #1d4d48; }
+    .wfd-chip-eatout { background: var(--plum-tint); color: #4a2f48; }
+    .wfd-chip-frozen { background: #d6e6ec; color: #1d4d62; }
+    .wfd-chip-neutral { background: #e3ebf3; color: var(--ink-2); }
+    .wfd-chip-green { background: #d1ead8; color: #1e4d2a; }
+    .wfd-chip-red { background: #fadcd0; color: var(--red); }
+
+    /* ── Inputs ───────────────────────────────────────────────── */
+    .wfd-input {
+      width: 100%; padding: 10px 14px; border-radius: 12px;
+      border: 1px solid var(--line); background: var(--surface);
+      font-size: 14px; outline: none; color: var(--ink); font-family: inherit;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .wfd-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(58,110,150,0.15); }
+    .wfd-textarea { resize: none; min-height: 80px; line-height: 1.4; }
+
+    /* ── Filter pills ─────────────────────────────────────────── */
+    .wfd-filter-pill {
+      padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      transition: all .12s; font-family: inherit;
+    }
+    .wfd-filter-pill:hover { border-color: var(--line-2); }
+    .wfd-filter-pill.active { background: var(--ink); color: var(--surface-2); border-color: var(--ink); }
+
+    /* ── Library cards ────────────────────────────────────────── */
+    .wfd-lib-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+      padding: 14px; display: flex; align-items: flex-start; gap: 12px;
+      text-align: left; cursor: pointer; font-family: inherit;
+      transition: all .12s; width: 100%; border: 1px solid var(--line);
+    }
+    .wfd-lib-card:hover { border-color: var(--line-2); transform: translateY(-1px); box-shadow: 0 8px 24px -10px rgba(43,29,18,0.18); }
+
+    /* ── Protein / inventory cards ─────────────────────────────── */
+    .wfd-protein-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .wfd-counter-btn {
+      width: 26px; height: 26px; border-radius: 6px; background: var(--surface-2);
+      color: var(--ink-2); font-weight: 700; border: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 16px; transition: background .12s; line-height: 1;
+    }
+    .wfd-counter-btn:hover { background: var(--primary-tint); color: var(--primary-deep); }
+    .wfd-counter-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Toggle switches ──────────────────────────────────────── */
+    .wfd-switch {
+      width: 40px; height: 24px; border-radius: 999px; background: var(--line);
+      border: none; cursor: pointer; padding: 2px; display: flex; align-items: center;
+      flex-shrink: 0; transition: background .15s;
+    }
+    .wfd-switch-on { background: var(--primary); }
+    .wfd-switch-knob { width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform .15s; }
+    .wfd-switch-on .wfd-switch-knob { transform: translateX(16px); }
+
+    /* ── Sheet / Modal ────────────────────────────────────────── */
+    .wfd-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(26,30,40,0.38);
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .wfd-sheet {
+      width: 100%; max-height: 90vh; background: var(--bg);
+      border-radius: 24px 24px 0 0; display: flex; flex-direction: column;
+      overflow: hidden; border-top: 1px solid var(--line);
+    }
+    .wfd-modal {
+      width: 100%; max-width: 480px; max-height: 90vh; background: var(--bg);
+      border-radius: 20px; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,0.4); margin: 24px;
+    }
+    @media (min-width: 640px) {
+      .wfd-backdrop { align-items: center; }
+      .wfd-sheet { border-radius: 20px; max-width: 480px; border-top: none; box-shadow: 0 30px 60px -20px rgba(0,0,0,0.4); }
+    }
+    .wfd-sheet-header {
+      padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line); background: var(--bg); flex-shrink: 0;
+    }
+    .wfd-sheet-body { padding: 16px 20px 24px; overflow-y: auto; flex: 1; }
+    .wfd-close-btn {
+      width: 32px; height: 32px; border-radius: 999px; background: transparent;
+      border: none; cursor: pointer; font-size: 22px; color: var(--muted);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .wfd-close-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+    /* ── Confirm modals ───────────────────────────────────────── */
+    .wfd-confirm-modal {
+      background: var(--bg); border-radius: 20px;
+      width: 100%; max-width: 380px; padding: 24px; margin: 24px;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,0.4);
+    }
+
+    /* ── Meal picker rows ─────────────────────────────────────── */
+    .wfd-meal-row {
+      width: 100%; padding: 10px 14px; background: transparent; border: none;
+      border-top: 1px solid var(--line); cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 12px; font-family: inherit; transition: background .1s;
+    }
+    .wfd-meal-row:first-child { border-top: none; }
+    .wfd-meal-row:hover { background: var(--surface-2); }
+    .wfd-meal-row.selected { background: var(--primary-tint); }
+    .wfd-meal-icon { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+    /* ── AI suggest popover ───────────────────────────────────── */
+    .wfd-popover {
+      position: absolute; top: calc(100% + 8px); left: 0;
+      min-width: 280px; max-width: 340px; z-index: 50;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 16px; box-shadow: 0 16px 40px -10px rgba(43,29,18,0.25);
+      overflow: hidden;
+    }
+    .wfd-popover-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      width: 100%; padding: 12px 14px; text-align: left;
+      background: transparent; border: none; border-top: 1px solid var(--line);
+      cursor: pointer; font-family: inherit; transition: background .1s;
+    }
+    .wfd-popover-row:first-child { border-top: none; }
+    .wfd-popover-row:hover { background: var(--surface-2); }
+
+    /* ── Mode pills (day editor) ──────────────────────────────── */
+    .wfd-mode-pill {
+      flex: 1; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; transition: all .12s; font-family: inherit; text-align: center;
+    }
+    .wfd-mode-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── Eat-out chips ────────────────────────────────────────── */
+    .wfd-eatout-chip {
+      padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      font-family: inherit; transition: all .12s;
+    }
+    .wfd-eatout-chip.selected { background: var(--plum); color: #fff; border-color: var(--plum); }
+
+    /* ── Type pills (meal editor) ─────────────────────────────── */
+    .wfd-type-pill {
+      padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; font-family: inherit; transition: all .12s; text-align: center;
+    }
+    .wfd-type-pill.active { background: var(--ink); color: var(--surface-2); border-color: var(--ink); }
+
+    /* ── Day / protein pills (settings) ──────────────────────── */
+    .wfd-day-pill {
+      padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; font-family: inherit; transition: all .12s;
+    }
+    .wfd-day-pill.gym { background: var(--ink); color: var(--surface-2); border-color: var(--ink); }
+    .wfd-day-pill.eatout { background: var(--plum); color: #fff; border-color: var(--plum); }
+
+    /* ── Protein pill selector (meal editor) ──────────────────── */
+    .wfd-protein-pill {
+      padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      font-family: inherit; transition: all .12s;
+    }
+    .wfd-protein-pill.active-meat { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .wfd-protein-pill.active-veg  { background: var(--sage); color: #fff; border-color: var(--sage); }
+
+    /* ── Settings panel ───────────────────────────────────────── */
+    .wfd-settings-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .wfd-settings-row { padding: 16px; border-top: 1px solid var(--line); }
+    .wfd-settings-row:first-child { border-top: none; }
+
+    /* ── Month calendar ───────────────────────────────────────── */
+    .wfd-cal-grid {
+      background: var(--line); border-radius: 16px; overflow: hidden;
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+    }
+    .wfd-cal-cell {
+      background: var(--surface-2); min-height: 68px; padding: 6px;
+      text-align: left; cursor: pointer; border: none; font-family: inherit;
+      transition: background .12s;
+    }
+    .wfd-cal-cell.current-week { background: var(--surface); }
+    .wfd-cal-cell.today-cell { outline: 1.5px solid var(--primary); outline-offset: -1.5px; }
+    .wfd-cal-cell:not([disabled]):hover { background: var(--primary-tint); }
+    @media (min-width: 1024px) { .wfd-cal-cell { min-height: 100px; } }
+
+    /* ── Tonight sidebar widget ───────────────────────────────── */
+    .wfd-tonight {
+      padding: 12px; border-radius: 12px; background: var(--surface);
+      border: 1px solid var(--line); cursor: pointer; width: 100%; text-align: left;
+      font-family: inherit; transition: border-color .12s; margin-top: auto;
+    }
+    .wfd-tonight:hover { border-color: var(--line-2); }
+
+    /* ── Week heading ─────────────────────────────────────────── */
+    .wfd-week-h1 { font-size: 30px; font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -0.025em; }
+    @media (min-width: 1024px) { .wfd-week-h1 { font-size: 44px; } }
+    .wfd-section-h1 { font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; }
+    @media (min-width: 1024px) { .wfd-section-h1 { font-size: 40px; } }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    .wfd-toast {
+      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
+      background: var(--ink); color: var(--surface-2); padding: 10px 16px;
+      border-radius: 999px; font-size: 13px; font-weight: 600;
+      box-shadow: 0 8px 24px -8px rgba(0,0,0,0.4); z-index: 200;
+      white-space: nowrap; pointer-events: none;
+    }
+    @media (min-width: 1024px) { .wfd-toast { bottom: 32px; } }
+
+    /* ── Misc ─────────────────────────────────────────────────── */
+    .wfd-week-badge {
+      display: inline-flex; align-items: center;
+      background: var(--primary); color: #fff;
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 999px; letter-spacing: 0.05em;
+    }
+    .wfd-section-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .wfd-card-surface {
+      background: var(--surface-2); border: 1px solid var(--line);
+      border-radius: 16px; padding: 16px;
+    }
+    .wfd-divider { border: none; border-top: 1px solid var(--line); margin: 0; }
+    .wfd-empty {
+      background: var(--surface); border: 1px dashed var(--line-2);
+      border-radius: 16px; padding: 32px; text-align: center;
+      font-size: 14px; color: var(--muted);
+    }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans" x-data="app()" x-init="init()" x-cloak>
+<body x-data="app()" x-init="init()" x-cloak>
 
-  <!-- Nav -->
-  <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
-    <div class="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
-      <span class="text-brand font-bold text-xl tracking-tight shrink-0">
-        <span class="sm:hidden">🍽</span>
-        <span class="hidden sm:inline">🍽 What's For Dinner?</span>
-      </span>
-      <div class="flex gap-1">
-        <template x-for="tab in tabs" :key="tab.id">
-          <button
-            @click="switchTab(tab.id)"
-            :class="activeTab === tab.id
-              ? 'bg-brand text-white'
-              : 'text-gray-600 hover:bg-gray-100'"
-            class="px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            <template x-if="tab.icon">
-              <img :src="tab.icon" :alt="tab.label" class="w-5 h-5 object-contain" :class="activeTab === tab.id ? 'brightness-0 invert' : ''">
-            </template>
-            <template x-if="!tab.icon">
-              <span class="sm:hidden" x-text="tab.short"></span>
-            </template>
-            <template x-if="!tab.icon">
-              <span class="hidden sm:inline" x-text="tab.label"></span>
-            </template>
-          </button>
-        </template>
+<div class="wfd-layout">
+
+  <!-- ── Desktop Sidebar ─────────────────────────────────────── -->
+  <aside class="wfd-sidebar">
+    <!-- Logo -->
+    <div class="wfd-logo">
+      <div class="wfd-logo-mark wfd-logo-mark-lg">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <path d="M5 3v6c0 1.7 1.3 3 3 3v5M15 3v6c0 1.7-1.3 3-3 3M10 3v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
       </div>
+      <span class="wfd-logo-text">Dinner</span>
     </div>
-  </nav>
 
-  <main class="max-w-5xl mx-auto px-4 py-6">
+    <!-- Nav links -->
+    <nav class="flex flex-col gap-0.5">
+      <template x-for="tab in tabs" :key="tab.id">
+        <button
+          @click="switchTab(tab.id)"
+          :class="activeTab === tab.id ? 'active' : ''"
+          class="wfd-sidenav-btn"
+          x-text="tab.label"
+        ></button>
+      </template>
+    </nav>
 
-    <!-- ── This Week ─────────────────────────────────────────── -->
-    <div x-show="activeTab === 'week'" x-transition>
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <button @click="prevWeek()" :disabled="!currentPlan" class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition-colors" aria-label="Previous week">◀</button>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-xl sm:text-2xl font-bold text-gray-900" x-text="isThisWeek() ? 'This Week' : weekLabel(currentPlan?.week_start)"></h1>
-              <button x-show="!isThisWeek()" @click="goToThisWeek()" class="text-xs bg-brand text-white px-2 py-0.5 rounded-full hover:bg-orange-600 transition-colors">Today</button>
-            </div>
-            <p x-show="isThisWeek()" class="text-sm text-gray-500" x-text="currentPlan ? weekLabel(currentPlan.week_start) : 'Loading…'"></p>
-          </div>
-          <button @click="nextWeek()" :disabled="!currentPlan" class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition-colors" aria-label="Next week">▶</button>
+    <!-- Tonight widget -->
+    <button
+      class="wfd-tonight"
+      @click="switchTab('week'); openDayEditor(todayPlanDay() || sortedDays(currentPlan)[new Date().getDay()])"
+      :disabled="!currentPlan"
+    >
+      <p style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Tonight</p>
+      <template x-if="todayPlanDay()?.meal">
+        <div>
+          <p style="font-size:14px;font-weight:700;color:var(--ink);line-height:1.2;" x-text="todayPlanDay().meal.name"></p>
+          <p style="font-size:12px;color:var(--muted);margin-top:4px;" x-text="DAY_NAMES[todayDow()] + (todayPlanDay().meal.easy_to_make ? ' · easy' : '')"></p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <!-- AI button with dropdown -->
+      </template>
+      <template x-if="todayPlanDay()?.day_type === 'eat_out'">
+        <p style="font-size:14px;font-weight:700;color:var(--plum);" x-text="todayPlanDay().custom_name || 'Eating out'"></p>
+      </template>
+      <template x-if="!currentPlan || (!todayPlanDay()?.meal && todayPlanDay()?.day_type !== 'eat_out')">
+        <p style="font-size:14px;font-weight:600;color:var(--muted);font-style:italic;">Tap to pick →</p>
+      </template>
+    </button>
+  </aside>
+
+  <!-- ── Main wrapper ────────────────────────────────────────── -->
+  <div class="wfd-main">
+
+    <!-- Mobile header -->
+    <header class="wfd-header">
+      <div class="wfd-logo">
+        <div class="wfd-logo-mark">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+            <path d="M5 3v6c0 1.7 1.3 3 3 3v5M15 3v6c0 1.7-1.3 3-3 3M10 3v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <!-- sm:hidden / hidden sm:inline for logo text — required by test -->
+        <span class="sm:hidden wfd-logo-text">Dinner</span>
+        <span class="hidden sm:inline wfd-logo-text">What's For Dinner?</span>
+      </div>
+      <button
+        class="wfd-icon-btn"
+        @click="switchTab('library')"
+        aria-label="Search meals"
+        title="Search the library"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
+          <circle cx="8.5" cy="8.5" r="5.5"/><path d="M13.5 13.5l3.5 3.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- ── Content ─────────────────────────────────────────── -->
+    <main class="wfd-content">
+
+      <!-- ── Week tab ─────────────────────────────────────────── -->
+      <div x-show="activeTab === 'week'" x-transition>
+
+        <!-- Week heading -->
+        <div class="flex items-end justify-between mb-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);" x-text="'Week ' + (currentPlan ? weekNumber(currentPlan.week_start) : '–')"></span>
+              <span x-show="isThisWeek()" class="wfd-week-badge">THIS WEEK</span>
+              <button x-show="!isThisWeek() && currentPlan" @click="goToThisWeek()" class="wfd-week-badge" style="cursor:pointer;border:none;font-family:inherit;">Today</button>
+            </div>
+            <h1 class="wfd-week-h1" x-text="currentPlan ? weekLabel(currentPlan.week_start) : 'Loading…'"></h1>
+            <p class="wfd-section-sub" x-show="currentPlan" x-text="
+              sortedDays(currentPlan).filter(d => d.day_type === 'home_cooked' && d.meal).length + ' meals planned · ' +
+              sortedDays(currentPlan).filter(d => d.day_type === 'eat_out').length + ' night' + (sortedDays(currentPlan).filter(d => d.day_type === 'eat_out').length === 1 ? '' : 's') + ' out'
+            "></p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button class="wfd-icon-btn" @click="prevWeek()" :disabled="!currentPlan" aria-label="Previous week">‹</button>
+            <button class="wfd-icon-btn" @click="nextWeek()" :disabled="!currentPlan" aria-label="Next week">›</button>
+          </div>
+        </div>
+
+        <!-- AI error / success banners -->
+        <div x-show="aiError" class="mb-4 p-3 rounded-xl text-sm" style="background:#fadcd0;color:var(--red);" x-text="aiError"></div>
+        <div x-show="aiSuccess" class="mb-4 p-3 rounded-xl text-sm" style="background:var(--sage-tint);color:#1e4d2a;">
+          ✅ AI has filled in suggestions — review and adjust each day below.
+        </div>
+
+        <!-- Action row -->
+        <div x-show="currentPlan" class="flex flex-col sm:flex-row gap-2 mb-5">
+          <!-- AI suggest with popover -->
           <div x-data="{ aiOpen: false }" class="relative" @click.away="aiOpen = false">
             <button
               @click="aiConfigured && !aiLoading ? (aiOpen = !aiOpen) : switchTab('settings')"
               :disabled="aiLoading || !currentPlan || aiProvider === 'none'"
-              :class="aiConfigured ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'"
-              class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              :class="aiConfigured ? 'wfd-btn-primary' : 'wfd-btn-secondary'"
+              class="wfd-btn"
+              style="width: 100%;"
             >
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M7 1l1.5 4L13 7l-4.5 2L7 13 5.5 9 1 7l4.5-2L7 1z"/></svg>
               <span x-show="aiLoading">Thinking…</span>
-              <span x-show="!aiLoading && aiConfigured" class="flex items-center gap-1">
-                <span>✨</span>
-                <span class="sm:hidden">AI</span>
-                <span class="hidden sm:inline">Suggest with AI</span>
-                <span class="text-xs opacity-60 ml-0.5">▾</span>
-              </span>
-              <span x-show="!aiLoading && !aiConfigured && aiProvider === 'none'">✨ AI off</span>
-              <span x-show="!aiLoading && !aiConfigured && aiProvider !== 'none'">✨ AI setup</span>
+              <span x-show="!aiLoading && aiConfigured">Suggest the week</span>
+              <span x-show="!aiLoading && !aiConfigured && aiProvider === 'none'">AI off</span>
+              <span x-show="!aiLoading && !aiConfigured && aiProvider !== 'none'">AI setup</span>
+              <span x-show="!aiLoading && aiConfigured" style="font-size:10px;opacity:0.6;margin-left:2px;">▾</span>
             </button>
-            <!-- Dropdown menu -->
-            <div
-              x-show="aiOpen"
-              x-transition:enter="transition ease-out duration-100"
-              x-transition:enter-start="opacity-0 scale-95"
-              x-transition:enter-end="opacity-100 scale-100"
-              x-transition:leave="transition ease-in duration-75"
-              x-transition:leave-start="opacity-100 scale-100"
-              x-transition:leave-end="opacity-0 scale-95"
-              class="absolute left-0 sm:left-auto sm:right-0 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden origin-top-left sm:origin-top-right"
-            >
-              <button
-                @click="generateAI('mix'); aiOpen = false"
-                :disabled="!currentPlan"
-                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 border-b border-gray-100 transition-colors"
-              >
-                <span class="text-lg">🎲</span>
+            <!-- Suggest popover -->
+            <div x-show="aiOpen" class="wfd-popover">
+              <div style="padding:10px 14px 8px;border-bottom:1px solid var(--line);">
+                <p style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">How should we suggest?</p>
+              </div>
+              <button @click="generateAI('mix'); aiOpen = false" :disabled="!currentPlan" class="wfd-popover-row" style="border-top:none;">
+                <span style="font-size:22px;line-height:1;margin-top:1px;">🎲</span>
                 <div>
-                  <p class="text-sm font-medium text-gray-800">Mix it up</p>
-                  <p class="text-xs text-gray-400">Favour less-used meals</p>
+                  <p style="font-size:14px;font-weight:700;color:var(--ink);">Mix it up</p>
+                  <p style="font-size:12px;color:var(--muted);margin-top:2px;">Favours meals you haven't had lately</p>
                 </div>
               </button>
-              <button
-                @click="generateAI('safe'); aiOpen = false"
-                :disabled="!currentPlan"
-                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 border-b border-gray-100 transition-colors"
-              >
-                <span class="text-lg">🛡️</span>
+              <button @click="generateAI('safe'); aiOpen = false" :disabled="!currentPlan" class="wfd-popover-row">
+                <span style="font-size:22px;line-height:1;margin-top:1px;">⭐</span>
                 <div>
-                  <p class="text-sm font-medium text-gray-800">Play it safe</p>
-                  <p class="text-xs text-gray-400">Favour your favourites</p>
+                  <p style="font-size:14px;font-weight:700;color:var(--ink);">Play it safe</p>
+                  <p style="font-size:12px;color:var(--muted);margin-top:2px;">Leans on household favourites</p>
                 </div>
               </button>
-              <button
-                @click="generateAI('on_hand'); aiOpen = false"
-                :disabled="!currentPlan"
-                class="w-full text-left px-4 py-3 hover:bg-violet-50 flex items-center gap-3 transition-colors"
-              >
-                <span class="text-lg">📦</span>
+              <button @click="generateAI('on_hand'); aiOpen = false" :disabled="!currentPlan" class="wfd-popover-row">
+                <span style="font-size:22px;line-height:1;margin-top:1px;">📦</span>
                 <div>
-                  <p class="text-sm font-medium text-gray-800">On hand</p>
-                  <p class="text-xs text-gray-400">Only use what's in stock</p>
+                  <p style="font-size:14px;font-weight:700;color:var(--ink);">Use on hand</p>
+                  <p style="font-size:12px;color:var(--muted);margin-top:2px;">Cooks what's in the freezer and fridge</p>
                 </div>
               </button>
             </div>
@@ -130,798 +557,796 @@
           <button
             @click="confirmClearOpen = true"
             :disabled="!currentPlan"
-            class="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-30 transition-colors"
+            class="wfd-btn wfd-btn-secondary"
             aria-label="Clear all days this week"
-          >
-            Clear week
-          </button>
+          >Clear week</button>
         </div>
-      </div>
 
-      <!-- AI error -->
-      <div x-show="aiError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" x-text="aiError"></div>
-      <!-- AI success -->
-      <div x-show="aiSuccess" class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-        ✅ AI has filled in suggestions — review and adjust each day below.
-      </div>
-
-      <!-- 7-day grid -->
-      <div x-show="currentPlan" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <template x-for="day in sortedDays(currentPlan)" :key="day.day_of_week">
-          <div
-            @click="openDayEditor(day)"
-            class="day-card cursor-pointer bg-white rounded-xl border-2 p-4 select-none"
-            :class="dayCardClass(day)"
-          >
-            <div class="flex items-start justify-between mb-2">
-              <span class="text-xs font-semibold uppercase tracking-wide text-gray-400" x-text="dayName(day.day_of_week) + ' - ' + dayDateStr(currentPlan?.week_start, day.day_of_week)"></span>
-              <div class="flex items-center gap-1">
-                <span x-show="day.carry_forward" class="text-xs text-gray-400" title="Carries forward to next week">📌</span>
-                <span x-show="settings.gym_days.includes(day.day_of_week)" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-medium">gym</span>
-                <span class="text-base" x-text="dayIcon(day)"></span>
-              </div>
-            </div>
-            <template x-if="day.day_type === 'home_cooked' && day.meal">
-              <div>
-                <p class="font-semibold text-gray-800 text-sm leading-tight" x-text="day.meal.name"></p>
-                <div class="flex flex-wrap gap-1 mt-1.5">
-                  <span x-show="day.meal.protein" class="text-xs rounded px-1.5 py-0.5" :class="proteinChipClass(proteinInfo(day.meal.protein)?.group)" x-text="(proteinInfo(day.meal.protein)?.emoji || '') + ' ' + day.meal.protein"></span>
-                  <span x-show="day.meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
-                  <span x-show="day.meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
+        <!-- Day cards grid -->
+        <div x-show="currentPlan" :class="{'grid grid-cols-4 gap-3': $el.closest('.wfd-content')?.clientWidth > 800, 'flex flex-col gap-2': true}">
+          <template x-for="day in sortedDays(currentPlan)" :key="day.day_of_week">
+            <button
+              @click="openDayEditor(day)"
+              class="wfd-day-card"
+              :class="{
+                'today': isToday(dayDateFull(currentPlan?.week_start, day.day_of_week)),
+                'shimmer': aiLoading
+              }"
+            >
+              <!-- Date rail -->
+              <div class="wfd-day-rail">
+                <span class="wfd-day-dow" x-text="['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day.day_of_week]"></span>
+                <span class="wfd-day-num" :class="{ 'today': isToday(dayDateFull(currentPlan?.week_start, day.day_of_week)) }" x-text="dayDateStr(currentPlan?.week_start, day.day_of_week)"></span>
+                <div class="flex flex-wrap justify-center gap-0.5 mt-1">
+                  <span x-show="settings.gym_days.includes(day.day_of_week)" style="font-size:8px;padding:1px 5px;background:var(--gold-tint);color:#6e5418;border-radius:4px;font-weight:700;">GYM</span>
+                  <span x-show="day.carry_forward" title="Carries forward to next week" style="font-size:10px;line-height:1;">📌</span>
                 </div>
               </div>
-            </template>
-            <template x-if="day.day_type === 'eat_out'">
-              <p class="font-semibold text-gray-700 text-sm" x-text="day.custom_name || 'Eating out'"></p>
-            </template>
-            <template x-if="day.day_type === 'skip'">
-              <p class="text-sm" :class="day.custom_name ? 'text-gray-700 font-semibold' : 'text-gray-400 italic'" x-text="day.custom_name || 'Other'"></p>
-            </template>
-            <template x-if="day.day_type === 'home_cooked' && !day.meal">
-              <p class="text-gray-400 text-sm italic">Pick a meal…</p>
-            </template>
-            <p x-show="day.notes" class="mt-1.5 text-xs text-gray-400 italic truncate" x-text="day.notes"></p>
-          </div>
-        </template>
-      </div>
 
-      <div x-show="!currentPlan" class="text-center py-16 text-gray-400">Loading plan…</div>
+              <!-- Content -->
+              <div class="flex-1 min-w-0 flex flex-col justify-center">
+                <template x-if="day.day_type === 'home_cooked' && day.meal">
+                  <div>
+                    <div class="flex items-start gap-2">
+                      <span style="font-size:20px;line-height:1;" x-text="proteinInfo(day.meal.protein)?.emoji || '🍽'"></span>
+                      <p style="font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;letter-spacing:-0.01em;" x-text="day.meal.name"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-1 mt-2">
+                      <span x-show="day.meal.protein" class="wfd-chip" :class="proteinInfo(day.meal.protein)?.group === 'veg' ? 'wfd-chip-veg' : 'wfd-chip-meat'" x-text="(proteinInfo(day.meal.protein)?.emoji || '') + ' ' + day.meal.protein"></span>
+                      <span x-show="day.meal.cuisine" class="wfd-chip wfd-chip-neutral" x-text="day.meal.cuisine"></span>
+                      <span x-show="day.meal.easy_to_make" class="wfd-chip wfd-chip-easy">⚡ easy</span>
+                      <span x-show="day.meal.has_leftovers" class="wfd-chip wfd-chip-left">📦 leftovers</span>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="day.day_type === 'eat_out'">
+                  <div>
+                    <div class="flex items-start gap-2">
+                      <span style="font-size:18px;line-height:1;">🍷</span>
+                      <p style="font-size:15px;font-weight:700;color:var(--plum);line-height:1.2;" x-text="day.custom_name || 'Eating out'"></p>
+                    </div>
+                    <div class="mt-2"><span class="wfd-chip wfd-chip-eatout">Eating out</span></div>
+                  </div>
+                </template>
+                <template x-if="day.day_type === 'skip' && (day.custom_name || !day.meal)">
+                  <p style="font-size:14px;font-weight:600;color:var(--ink-2);" x-text="day.custom_name || 'Other plans'"></p>
+                </template>
+                <template x-if="day.day_type === 'home_cooked' && !day.meal">
+                  <p style="font-size:14px;font-style:italic;color:var(--muted);">Tap to pick a meal…</p>
+                </template>
+                <p x-show="day.notes" style="font-size:11px;margin-top:6px;color:var(--muted);font-style:italic;" x-text="'&quot;' + day.notes + '&quot;'"></p>
+              </div>
+            </button>
+          </template>
+        </div>
 
-      <!-- Week notes -->
-      <div x-show="currentPlan" class="mt-4">
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Week notes</label>
+        <div x-show="!currentPlan" class="wfd-empty" style="margin-top:8px;">Loading plan…</div>
+
+        <!-- Week notes -->
+        <div x-show="currentPlan" class="wfd-card-surface mt-4">
+          <p style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-2);margin-bottom:6px;">📝 Week notes</p>
           <textarea
             x-model="weekNotes"
             @blur="saveWeekNotes()"
             rows="2"
             placeholder="Anything to remember this week…"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"
+            class="wfd-input wfd-textarea"
+            style="background:var(--surface);font-size:13px;"
           ></textarea>
-          <p x-show="weekNotesSaved" class="text-xs text-green-600 mt-1">✓ Saved</p>
+          <p x-show="weekNotesSaved" style="font-size:12px;color:var(--sage);margin-top:4px;">✓ Saved</p>
         </div>
       </div>
-    </div>
 
-    <!-- ── Meal Library ───────────────────────────────────────── -->
-    <div x-show="activeTab === 'library'" x-transition>
-      <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-900">Meal Library</h1>
-        <button
-          @click="openMealEditor(null)"
-          class="px-3 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
-        >
-          + Add Meal
-        </button>
-      </div>
+      <!-- ── Library tab ───────────────────────────────────────── -->
+      <div x-show="activeTab === 'library'" x-transition>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h1 class="wfd-section-h1">Meal Library</h1>
+            <p class="wfd-section-sub" x-text="meals.length + ' meals · ' + meals.filter(m => m.meal_type === 'home_cooked').length + ' home-cooked'"></p>
+          </div>
+          <button @click="openMealEditor(null)" class="wfd-btn wfd-btn-primary">
+            <span style="font-size:16px;line-height:1;">+</span> Add meal
+          </button>
+        </div>
 
-      <div class="mb-3">
         <input
           x-model="mealSearch"
           type="text"
-          placeholder="Search meals…"
-          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          placeholder="Search meals, cuisines…"
+          class="wfd-input"
+          style="margin-bottom:12px;"
         />
-      </div>
 
-      <div class="flex gap-2 mb-4 flex-wrap">
-        <template x-for="opt in [{v:'',l:'All'},{v:'home_cooked',l:'Home cooked'},{v:'eat_out',l:'Eat out'},{v:'frozen',l:'Frozen'}]" :key="opt.v">
-          <button
-            @click="mealTypeFilter = opt.v"
-            :class="mealTypeFilter === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
-            class="px-3 py-1.5 rounded-full border text-sm font-medium transition-colors"
-            x-text="opt.l"
-          ></button>
-        </template>
-      </div>
+        <!-- Filter pills -->
+        <div class="flex gap-1.5 flex-wrap mb-4">
+          <template x-for="opt in [{v:'',l:'All'},{v:'home_cooked',l:'Home cooked'},{v:'eat_out',l:'Eat out'},{v:'frozen',l:'Frozen'}]" :key="opt.v">
+            <button
+              @click="mealTypeFilter = opt.v"
+              :class="mealTypeFilter === opt.v ? 'active' : ''"
+              class="wfd-filter-pill"
+              x-text="opt.l"
+            ></button>
+          </template>
+        </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <template x-for="meal in filteredMeals()" :key="meal.id">
-          <div class="bg-white rounded-xl border-2 p-4 hover:shadow-sm transition-shadow" :class="mealCardClass(meal.meal_type)">
-            <div class="flex items-start justify-between">
+        <!-- Meal grid -->
+        <div x-show="filteredMeals().length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <template x-for="meal in filteredMeals()" :key="meal.id">
+            <button
+              @click="openMealEditor(meal)"
+              class="wfd-lib-card"
+              aria-label="Edit meal"
+            >
+              <!-- Icon tile -->
+              <div style="width:44px;height:44px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;"
+                :style="meal.meal_type === 'frozen' ? 'background:#d6e6ec' : meal.meal_type === 'eat_out' ? 'background:var(--plum-tint)' : proteinInfo(meal.protein)?.group === 'veg' ? 'background:var(--sage-tint)' : 'background:var(--primary-tint)'"
+              >
+                <span x-text="meal.meal_type === 'frozen' ? '❄️' : meal.meal_type === 'eat_out' ? '🍷' : (proteinInfo(meal.protein)?.emoji || '🍽')"></span>
+              </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-800 truncate" x-text="meal.name"></p>
+                <div class="flex items-center justify-between gap-2">
+                  <p style="font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-0.01em;" x-text="meal.name"></p>
+                  <span style="font-size:11px;font-weight:600;color:var(--muted);" x-show="meal.times_used > 0" x-text="'×' + meal.times_used"></span>
+                </div>
                 <div class="flex flex-wrap gap-1 mt-1.5">
-                  <span class="text-xs rounded px-1.5 py-0.5" :class="mealTypeClass(meal.meal_type)" x-text="mealTypeLabel(meal.meal_type)"></span>
-                  <span x-show="meal.cuisine" class="text-xs bg-orange-100 text-orange-700 rounded px-1.5 py-0.5" x-text="meal.cuisine"></span>
-                  <span x-show="meal.protein" class="text-xs rounded px-1.5 py-0.5" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
-                  <span x-show="meal.easy_to_make" class="text-xs bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5">⚡ easy</span>
-                  <span x-show="meal.has_leftovers" class="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">📦 leftovers</span>
-                  <span x-show="meal.times_used > 0" class="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5" :title="meal.times_used + ' times on a plan'" x-text="'×' + meal.times_used"></span>
+                  <span x-show="meal.protein" class="wfd-chip" :class="proteinInfo(meal.protein)?.group === 'veg' ? 'wfd-chip-veg' : 'wfd-chip-meat'" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
+                  <span x-show="meal.cuisine" class="wfd-chip wfd-chip-neutral" x-text="meal.cuisine"></span>
+                  <span x-show="meal.easy_to_make" class="wfd-chip wfd-chip-easy">⚡ easy</span>
+                  <span x-show="meal.has_leftovers" class="wfd-chip wfd-chip-left">📦 leftovers</span>
+                  <span x-show="meal.meal_type === 'frozen'" class="wfd-chip wfd-chip-frozen" x-text="'×' + meal.frozen_quantity + ' in freezer'"></span>
+                  <span x-show="meal.meal_type === 'eat_out'" class="wfd-chip wfd-chip-eatout">Eat out</span>
                 </div>
-                <!-- Frozen inventory controls -->
+                <!-- Frozen quantity controls inline -->
                 <div x-show="meal.meal_type === 'frozen'" class="flex items-center gap-1.5 mt-2">
-                  <button @click.stop="adjustFrozenQty(meal, -1)" class="w-6 h-6 rounded bg-cyan-100 text-cyan-700 text-sm font-bold hover:bg-cyan-200 transition-colors">-</button>
-                  <span class="text-sm font-semibold text-cyan-700 min-w-[2ch] text-center" x-text="meal.frozen_quantity"></span>
-                  <button @click.stop="adjustFrozenQty(meal, 1)" class="w-6 h-6 rounded bg-cyan-100 text-cyan-700 text-sm font-bold hover:bg-cyan-200 transition-colors">+</button>
-                  <span class="text-xs text-cyan-500">in freezer</span>
+                  <button @click.stop="adjustFrozenQty(meal, -1)" class="wfd-counter-btn">−</button>
+                  <span style="font-size:14px;font-weight:700;color:var(--ink);min-width:18px;text-align:center;" x-text="meal.frozen_quantity"></span>
+                  <button @click.stop="adjustFrozenQty(meal, 1)" class="wfd-counter-btn">+</button>
+                  <span style="font-size:11px;color:var(--muted);">in freezer</span>
                 </div>
-                <p x-show="meal.notes" class="mt-1.5 text-xs text-gray-500 line-clamp-2" x-text="meal.notes"></p>
+                <p x-show="meal.recipe_url" style="font-size:11px;color:var(--primary);margin-top:4px;">🔗 Recipe</p>
               </div>
-              <div class="flex items-center gap-1 ml-2 shrink-0">
-                <a
-                  x-show="meal.recipe_url"
-                  :href="meal.recipe_url"
-                  target="_blank"
-                  @click.stop
-                  class="text-gray-400 hover:text-brand transition-colors"
-                  title="Recipe link"
-                >🔗</a>
-                <button @click="openMealEditor(meal)" class="text-gray-400 hover:text-gray-700 p-1 rounded transition-colors" aria-label="Edit meal">✏️</button>
-              </div>
-            </div>
-          </div>
-        </template>
-        <div x-show="filteredMeals().length === 0" class="col-span-full text-center py-12 text-gray-400">
-          <p class="text-lg">No meals yet</p>
-          <p class="text-sm mt-1">Add your first meal to get started</p>
+            </button>
+          </template>
+        </div>
+        <div x-show="filteredMeals().length === 0" class="wfd-empty">
+          <p>No meals found.</p>
+          <p style="font-size:12px;margin-top:4px;">Try clearing the search or add a new meal.</p>
         </div>
       </div>
-    </div>
 
-    <!-- ── Inventory ─────────────────────────────────────────── -->
-    <div x-show="activeTab === 'inventory'" x-transition>
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Inventory</h1>
+      <!-- ── Stock (Inventory) tab ─────────────────────────────── -->
+      <div x-show="activeTab === 'inventory'" x-transition>
+        <h1 class="wfd-section-h1 mb-4">Inventory</h1>
 
-      <!-- Protein Inventory -->
-      <div class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-800">Protein Stock</h2>
-          <button @click="addProteinOpen = !addProteinOpen" class="px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-medium hover:bg-orange-600 transition-colors">+ Add Protein</button>
+        <!-- Protein stock -->
+        <div class="flex items-center justify-between mb-3">
+          <h2 style="font-size:16px;font-weight:700;color:var(--ink);">Protein stock</h2>
+          <button @click="addProteinOpen = !addProteinOpen" class="wfd-btn wfd-btn-secondary" style="font-size:12px;padding:6px 12px;">+ Add</button>
         </div>
 
         <!-- Add protein form -->
-        <div x-show="addProteinOpen" class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <div x-show="addProteinOpen" class="wfd-card-surface mb-4">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Key (no spaces)</label>
-              <input x-model="addProteinForm.protein_name" type="text" placeholder="e.g. duck" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <label style="font-size:12px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px;">Key (no spaces)</label>
+              <input x-model="addProteinForm.protein_name" type="text" placeholder="e.g. duck" class="wfd-input" style="font-size:13px;" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Display name</label>
-              <input x-model="addProteinForm.display_name" type="text" placeholder="e.g. Duck" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <label style="font-size:12px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px;">Display name</label>
+              <input x-model="addProteinForm.display_name" type="text" placeholder="e.g. Duck" class="wfd-input" style="font-size:13px;" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Emoji</label>
-              <input x-model="addProteinForm.emoji" type="text" placeholder="e.g. 🦆" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <label style="font-size:12px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px;">Emoji</label>
+              <input x-model="addProteinForm.emoji" type="text" placeholder="🦆" class="wfd-input" style="font-size:13px;" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">Group</label>
-              <select x-model="addProteinForm.group" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+              <label style="font-size:12px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px;">Group</label>
+              <select x-model="addProteinForm.group" class="wfd-input" style="font-size:13px;">
                 <option value="meat">Meat</option>
                 <option value="veg">Vegetarian</option>
               </select>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="saveNewProtein()" :disabled="!addProteinForm.protein_name.trim() || !addProteinForm.display_name.trim()" class="px-3 py-1.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors">Add</button>
-            <button @click="addProteinOpen = false" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button @click="saveNewProtein()" :disabled="!addProteinForm.protein_name.trim() || !addProteinForm.display_name.trim()" class="wfd-btn wfd-btn-accent" style="font-size:12px;padding:8px 14px;">Add</button>
+            <button @click="addProteinOpen = false" class="wfd-btn wfd-btn-secondary" style="font-size:12px;padding:8px 14px;">Cancel</button>
           </div>
         </div>
 
-        <!-- Protein cards grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <!-- Protein cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
           <template x-for="p in proteinInventory" :key="p.protein_name">
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="wfd-protein-card">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-semibold text-gray-800" x-text="p.emoji + ' ' + p.display_name"></span>
+                <span style="font-size:22px;" x-text="p.emoji"></span>
                 <div class="flex items-center gap-1.5">
-                  <button @click="openEditProtein(p)" class="text-gray-300 hover:text-blue-500 text-xs transition-colors" aria-label="Edit protein">✎</button>
-                  <button @click="deleteProtein(p.protein_name)" class="text-gray-300 hover:text-red-500 text-xs transition-colors" aria-label="Remove protein">✕</button>
+                  <span x-show="p.quantity === 0" class="wfd-chip wfd-chip-red" style="font-size:9px;padding:2px 6px;">OUT</span>
+                  <button @click="openEditProtein(p)" class="wfd-icon-btn" style="width:28px;height:28px;font-size:13px;" aria-label="Edit protein">✎</button>
+                  <button @click="deleteProtein(p.protein_name)" class="wfd-icon-btn" style="width:28px;height:28px;font-size:13px;color:var(--red);" aria-label="Remove protein">✕</button>
                 </div>
               </div>
-              <!-- Inline edit form -->
+              <!-- Inline edit -->
               <div x-show="editProteinName === p.protein_name" class="mb-2 flex flex-col gap-2">
                 <div class="flex gap-2">
                   <div class="flex-1">
-                    <label class="block text-xs font-medium text-gray-500 mb-0.5">Emoji</label>
-                    <input x-model="editProteinForm.emoji" type="text" class="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:2px;">Emoji</label>
+                    <input x-model="editProteinForm.emoji" type="text" class="wfd-input" style="font-size:13px;" />
                   </div>
                   <div class="flex-1">
-                    <label class="block text-xs font-medium text-gray-500 mb-0.5">Group</label>
-                    <select x-model="editProteinForm.group" class="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:2px;">Group</label>
+                    <select x-model="editProteinForm.group" class="wfd-input" style="font-size:13px;">
                       <option value="meat">Meat</option>
-                      <option value="veg">Vegetarian</option>
+                      <option value="veg">Veg</option>
                     </select>
                   </div>
                 </div>
                 <div class="flex gap-2">
-                  <button @click="saveEditProtein()" class="px-2.5 py-1 bg-brand text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors">Save</button>
-                  <button @click="editProteinName = null" class="px-2.5 py-1 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+                  <button @click="saveEditProtein()" class="wfd-btn wfd-btn-accent" style="font-size:11px;padding:6px 10px;">Save</button>
+                  <button @click="editProteinName = null" class="wfd-btn wfd-btn-secondary" style="font-size:11px;padding:6px 10px;">Cancel</button>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <button @click="adjustProtein(p.protein_name, -1)" class="w-7 h-7 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200 transition-colors">-</button>
-                <span class="text-lg font-bold text-gray-800 min-w-[2ch] text-center" x-text="p.quantity"></span>
-                <button @click="adjustProtein(p.protein_name, 1)" class="w-7 h-7 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200 transition-colors">+</button>
-                <span class="text-xs text-gray-400" x-text="p.unit"></span>
+              <p style="font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:8px;" x-text="p.display_name"></p>
+              <div class="flex items-center gap-1.5">
+                <button @click="adjustProtein(p.protein_name, -1)" :disabled="p.quantity === 0" class="wfd-counter-btn">−</button>
+                <span style="font-size:18px;font-weight:700;color:var(--ink);min-width:20px;text-align:center;" x-text="p.quantity"></span>
+                <button @click="adjustProtein(p.protein_name, 1)" class="wfd-counter-btn">+</button>
               </div>
+              <p style="font-size:10px;color:var(--muted);margin-top:4px;" x-text="p.unit"></p>
             </div>
           </template>
-          <div x-show="proteinInventory.length === 0" class="col-span-full text-center py-8 text-gray-400">
-            <p>No proteins in inventory</p>
-          </div>
+          <div x-show="proteinInventory.length === 0" class="col-span-full wfd-empty">No proteins in inventory</div>
         </div>
-      </div>
 
-      <!-- Shopping List -->
-      <div class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-800">Shopping List</h2>
-          <button @click="loadShoppingList()" :disabled="!currentPlan || shoppingListLoading" class="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
-            <span x-show="!shoppingListLoading">Generate for current week</span>
-            <span x-show="shoppingListLoading">Loading...</span>
+        <!-- Shopping list -->
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 style="font-size:16px;font-weight:700;color:var(--ink);">Shopping list</h2>
+            <p class="wfd-section-sub" x-text="currentPlan ? weekLabel(currentPlan.week_start) + ' · auto-built from your plan' : ''"></p>
+          </div>
+          <button
+            @click="loadShoppingList()"
+            :disabled="!currentPlan || shoppingListLoading"
+            class="wfd-btn wfd-btn-primary"
+            style="font-size:12px;padding:8px 14px;"
+          >
+            <span x-show="!shoppingListLoading">Generate shopping list</span>
+            <span x-show="shoppingListLoading">Loading…</span>
           </button>
         </div>
 
-        <div x-show="shoppingList" class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          <div class="px-4 py-3 bg-gray-50 rounded-t-xl">
-            <p class="text-sm font-medium text-gray-700">Week of <span x-text="shoppingList?.week_start"></span></p>
+        <div x-show="shoppingList" style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;">
+          <div x-show="shoppingList?.items?.length === 0" style="padding:20px;text-align:center;font-size:13px;color:var(--muted);">
+            All set — nothing to buy this week.
           </div>
-          <template x-for="item in shoppingList?.items || []" :key="item.item_name">
-            <div class="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+          <template x-for="(item, i) in shoppingList?.items || []" :key="item.item_name">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5"
+              :style="i === 0 ? 'padding:12px 16px;' : 'padding:12px 16px;border-top:1px solid var(--line);'">
               <div class="flex items-center gap-2">
-                <span class="text-xs rounded px-1.5 py-0.5 shrink-0" :class="item.item_type === 'protein' ? 'bg-red-100 text-red-700' : 'bg-cyan-100 text-cyan-700'" x-text="item.item_type === 'protein' ? 'Protein' : 'Frozen'"></span>
-                <span class="text-sm font-medium text-gray-800" x-text="item.item_name"></span>
+                <span class="wfd-chip" :class="item.item_type === 'protein' ? 'wfd-chip-meat' : 'wfd-chip-frozen'" x-text="item.item_type === 'protein' ? 'protein' : 'frozen'"></span>
+                <span style="font-size:14px;font-weight:600;color:var(--ink);" x-text="item.item_name"></span>
               </div>
-              <div class="flex items-center gap-3 text-sm pl-0 sm:pl-0">
-                <span class="text-gray-500">need <span class="font-medium" x-text="item.needed"></span></span>
-                <span class="text-gray-500">have <span class="font-medium" x-text="item.on_hand"></span></span>
-                <span x-show="item.shortage > 0" class="font-semibold text-red-600" x-text="'buy ' + item.shortage + ' ' + item.unit"></span>
-                <span x-show="item.shortage <= 0" class="text-green-600 font-medium">OK</span>
+              <div class="flex items-center gap-3" style="font-size:13px;padding-left:0;">
+                <span style="color:var(--muted);">need <span style="font-weight:600;" x-text="item.needed"></span></span>
+                <span style="color:var(--muted);">have <span style="font-weight:600;" x-text="item.on_hand"></span></span>
+                <span x-show="item.shortage > 0" style="font-weight:700;color:var(--red);" x-text="'buy ' + item.shortage + ' ' + item.unit"></span>
+                <span x-show="item.shortage <= 0" style="font-weight:700;color:var(--sage);">✓ OK</span>
               </div>
             </div>
           </template>
-          <div x-show="shoppingList?.items?.length === 0" class="px-4 py-6 text-center text-gray-400 text-sm">
-            No items needed — everything is in stock or no meals planned.
+        </div>
+        <div x-show="!shoppingList" class="wfd-empty" style="margin-top:8px;">
+          Click "Generate shopping list" to see what you need.
+        </div>
+      </div>
+
+      <!-- ── Month tab ─────────────────────────────────────────── -->
+      <div x-show="activeTab === 'month'" x-transition>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <p style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);" x-text="monthLabel()"></p>
+            <h1 class="wfd-section-h1">This Month</h1>
+          </div>
+          <div class="flex gap-1.5">
+            <button @click="prevMonth()" class="wfd-icon-btn" aria-label="Previous month">‹</button>
+            <button @click="nextMonth()" class="wfd-icon-btn" aria-label="Next month">›</button>
           </div>
         </div>
 
-        <div x-show="!shoppingList" class="text-center py-8 text-gray-400 text-sm">
-          Click "Generate" to see what you need for this week's plan.
+        <!-- Day headers -->
+        <div class="grid grid-cols-7 mb-1">
+          <template x-for="name in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="name">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-align:center;color:var(--muted);text-transform:uppercase;padding:4px 0;" x-text="name"></div>
+          </template>
         </div>
-      </div>
-    </div>
 
-    <!-- ── Month View ────────────────────────────────────────── -->
-    <div x-show="activeTab === 'month'" x-transition>
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-900" x-text="monthLabel()"></h1>
-        <div class="flex gap-1">
-          <button @click="prevMonth()" class="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-sm font-medium" aria-label="Previous month">◀</button>
-          <button @click="nextMonth()" class="p-2 rounded-lg hover:bg-gray-100 text-gray-600 text-sm font-medium" aria-label="Next month">▶</button>
-        </div>
-      </div>
-
-      <!-- Day-of-week header row -->
-      <div class="grid grid-cols-7 mb-1">
-        <template x-for="name in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="name">
-          <div class="text-center text-xs font-semibold text-gray-400 uppercase py-1" x-text="name"></div>
-        </template>
-      </div>
-
-      <!-- Calendar grid -->
-      <div x-show="!monthLoading" class="rounded-xl overflow-hidden border border-gray-200 bg-gray-100 grid gap-px">
-        <template x-for="week in monthCalendarWeeks()" :key="week[0]">
-          <div class="grid grid-cols-7 gap-px">
+        <!-- Calendar grid -->
+        <div x-show="!monthLoading" class="wfd-cal-grid">
+          <template x-for="week in monthCalendarWeeks()" :key="week[0]">
             <template x-for="dateStr in week" :key="dateStr">
-              <div
+              <button
                 @click="jumpToWeek(dateStr)"
-                class="bg-white cursor-pointer hover:bg-orange-50 transition-colors p-2 min-h-[68px]"
+                class="wfd-cal-cell"
                 :class="{
-                  'opacity-40': !isCurrentMonth(dateStr),
-                  'ring-2 ring-inset ring-brand': isToday(dateStr),
+                  'current-week': planForDate(dateStr)?.week_start === currentPlan?.week_start,
+                  'today-cell': isToday(dateStr),
                 }"
+                :style="!isCurrentMonth(dateStr) ? 'opacity:0.38' : ''"
               >
-                <p
-                  class="text-xs font-bold mb-0.5"
-                  :class="isToday(dateStr) ? 'text-brand' : 'text-gray-400'"
-                  x-text="parseInt(dateStr.split('-')[2])"
-                ></p>
+                <p style="font-size:11px;font-weight:700;line-height:1;" :style="isToday(dateStr) ? 'color:var(--primary)' : 'color:var(--muted)'" x-text="parseInt(dateStr.split('-')[2])"></p>
                 <p
                   x-show="dayForDate(dateStr) && (dayForDate(dateStr).day_type !== 'skip' || dayForDate(dateStr).custom_name)"
-                  class="text-xs leading-snug text-gray-700 line-clamp-2"
+                  style="font-size:9px;margin-top:3px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;"
+                  :style="dayForDate(dateStr)?.day_type === 'eat_out' ? 'color:var(--plum);font-style:italic' : 'color:var(--ink-2)'"
                   x-text="dayShortLabel(dayForDate(dateStr))"
                 ></p>
-              </div>
+              </button>
             </template>
+          </template>
+        </div>
+        <div x-show="monthLoading" class="wfd-empty" style="margin-top:8px;">Loading…</div>
+      </div>
+
+      <!-- ── Settings tab ──────────────────────────────────────── -->
+      <div x-show="activeTab === 'settings'" x-transition>
+        <h1 class="wfd-section-h1 mb-4">Settings</h1>
+
+        <!-- AI disabled banner -->
+        <div x-show="aiProvider === 'none'" class="mb-4 p-4 rounded-xl text-sm" style="background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);">
+          <p style="font-weight:700;margin-bottom:4px;">✨ AI suggestions are disabled</p>
+          <p>Set <code style="background:var(--surface);padding:1px 5px;border-radius:4px;">AI_PROVIDER</code> to <code style="background:var(--surface);padding:1px 5px;border-radius:4px;">anthropic</code> or <code style="background:var(--surface);padding:1px 5px;border-radius:4px;">openai</code> in your <code style="background:var(--surface);padding:1px 5px;border-radius:4px;">.env</code> file to enable them.</p>
+        </div>
+
+        <!-- AI key-missing banner -->
+        <div x-show="!aiConfigured && aiProvider !== 'none'" class="mb-4 p-4 rounded-xl text-sm" style="background:var(--gold-tint);border:1px solid #d4a84a;color:#6e5418;">
+          <p style="font-weight:700;margin-bottom:4px;">✨ AI meal suggestions are not configured</p>
+          <p>Add your API key to the <code style="background:rgba(255,255,255,0.5);padding:1px 5px;border-radius:4px;">.env</code> file and restart the container.</p>
+        </div>
+
+        <div class="wfd-settings-panel">
+          <!-- Gym nights -->
+          <div class="wfd-settings-row">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">Gym nights 🏋️</p>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">AI prefers easy meals on these nights.</p>
+            <div class="flex gap-1.5 flex-wrap">
+              <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
+                <button
+                  @click="toggleDay('gym_days', idx)"
+                  :class="settings.gym_days.includes(idx) ? 'gym' : ''"
+                  class="wfd-day-pill"
+                  x-text="name"
+                ></button>
+              </template>
+            </div>
           </div>
+
+          <!-- Eat-out nights -->
+          <div class="wfd-settings-row">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">Default eat-out nights 🍷</p>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">These days are pre-set as "eating out" in new plans.</p>
+            <div class="flex gap-1.5 flex-wrap">
+              <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
+                <button
+                  @click="toggleDay('eat_out_days', idx)"
+                  :class="settings.eat_out_days.includes(idx) ? 'eatout' : ''"
+                  class="wfd-day-pill"
+                  x-text="name"
+                ></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- AI provider -->
+          <div class="wfd-settings-row">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">AI provider</p>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">The <code style="background:var(--surface-2);padding:1px 5px;border-radius:4px;">AI_PROVIDER</code> env var overrides this if set.</p>
+            <div class="flex flex-wrap gap-1.5">
+              <template x-for="opt in [{value:'anthropic',label:'Anthropic'},{value:'openai',label:'OpenAI'},{value:'none',label:'Disabled'}]" :key="opt.value">
+                <button
+                  @click="settings.ai_provider = opt.value"
+                  :class="(settings.ai_provider || 'anthropic') === opt.value ? 'active' : ''"
+                  class="wfd-filter-pill"
+                  x-text="opt.label"
+                ></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- AI API key -->
+          <div class="wfd-settings-row">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">AI API key</p>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Stored on the server — never returned by the API. Env var <code style="background:var(--surface-2);padding:1px 5px;border-radius:4px;">AI_API_KEY</code> takes precedence if set.</p>
+            <div x-show="settings.ai_key_configured" class="mb-3">
+              <span class="wfd-chip wfd-chip-green">✓ Key configured</span>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="password"
+                x-model="aiKeyInput"
+                :placeholder="settings.ai_key_configured ? 'Enter a new key to replace' : 'Paste your API key here'"
+                class="wfd-input flex-1 min-w-0"
+              />
+              <button @click="saveAiKey()" :disabled="!aiKeyInput || aiKeySaving" class="wfd-btn wfd-btn-accent" style="white-space:nowrap;">
+                <span x-show="!aiKeySaving">Save key</span>
+                <span x-show="aiKeySaving">Saving…</span>
+              </button>
+            </div>
+            <p x-show="aiKeySaved" style="font-size:12px;color:var(--sage);margin-top:4px;">✓ Key saved</p>
+          </div>
+
+          <!-- Custom AI instructions -->
+          <div class="wfd-settings-row">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">Custom AI instructions</p>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Dietary preferences, ingredient restrictions, cooking style — sent with every AI request.</p>
+            <textarea
+              x-model="settings.custom_instructions"
+              rows="4"
+              placeholder="e.g. We prefer spicy food. Avoid dairy on weeknights. Try to include one vegetarian meal per week."
+              class="wfd-input wfd-textarea"
+              style="font-size:13px;background:var(--surface-2);"
+            ></textarea>
+          </div>
+
+          <!-- Save button -->
+          <div class="wfd-settings-row">
+            <button @click="saveSettings()" :disabled="settingsSaving" class="wfd-btn wfd-btn-accent">
+              <span x-show="!settingsSaving">Save settings</span>
+              <span x-show="settingsSaving">Saving…</span>
+            </button>
+            <span x-show="settingsSaved" style="margin-left:12px;font-size:13px;color:var(--sage);">✓ Saved</span>
+          </div>
+        </div>
+      </div>
+
+    </main><!-- /wfd-content -->
+
+    <!-- Mobile bottom pill nav -->
+    <nav class="wfd-bottom-nav">
+      <div class="wfd-pill-nav">
+        <template x-for="tab in tabs" :key="tab.id">
+          <button
+            @click="switchTab(tab.id)"
+            :class="activeTab === tab.id ? 'active' : ''"
+            class="wfd-pill-tab"
+            x-text="tab.label"
+          ></button>
+        </template>
+      </div>
+    </nav>
+
+  </div><!-- /wfd-main -->
+
+</div><!-- /wfd-layout -->
+
+
+<!-- ── Day Editor Sheet ─────────────────────────────────────── -->
+<div
+  x-show="dayEditorOpen"
+  x-transition:enter="transition ease-out duration-200"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-150"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  class="wfd-backdrop"
+  @click.self="dayEditorOpen = false"
+  role="dialog" aria-modal="true" aria-label="Day editor"
+>
+  <div class="wfd-sheet" @click.stop>
+    <div class="wfd-sheet-header">
+      <div>
+        <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);" x-text="editingDay ? (dayName(editingDay.day_of_week) + ' · ' + dayDateStr(currentPlan?.week_start, editingDay.day_of_week) + '/' + (new Date(currentPlan?.week_start + 'T00:00:00').getFullYear() % 100)) : ''"></p>
+        <p style="font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-0.015em;margin-top:2px;">Plan this day</p>
+      </div>
+      <button @click="dayEditorOpen = false" class="wfd-close-btn" aria-label="Close">×</button>
+    </div>
+    <div class="wfd-sheet-body">
+      <!-- Gym night badge -->
+      <div x-show="editingDay && settings.gym_days.includes(editingDay.day_of_week)" class="mb-3">
+        <span class="wfd-chip wfd-chip-easy">🏋️ Gym night — easy meal recommended</span>
+      </div>
+
+      <!-- Mode pills -->
+      <div class="flex gap-1.5 mb-4">
+        <template x-for="opt in [{v:'home_cooked',l:'🍳 Cook'},{v:'eat_out',l:'🍷 Eat out'},{v:'skip',l:'— Other'}]" :key="opt.v">
+          <button
+            @click="setEditDayType(opt.v)"
+            :class="editDayForm.day_type === opt.v ? 'active' : ''"
+            class="wfd-mode-pill"
+            x-text="opt.l"
+          ></button>
         </template>
       </div>
 
-      <div x-show="monthLoading" class="text-center py-16 text-gray-400">Loading…</div>
-    </div>
-
-    <!-- ── Settings ──────────────────────────────────────────── -->
-    <div x-show="activeTab === 'settings'" x-transition>
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-
-      <!-- AI disabled banner -->
-      <div x-show="aiProvider === 'none'" class="mb-5 p-4 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-700">
-        <p class="font-semibold mb-1">✨ AI suggestions are disabled</p>
-        <p>Set <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> to <code class="bg-gray-100 px-1 rounded">anthropic</code> or <code class="bg-gray-100 px-1 rounded">openai</code> in your <code class="bg-gray-100 px-1 rounded">.env</code> file to enable them.</p>
-      </div>
-
-      <!-- AI key-missing banner -->
-      <div x-show="!aiConfigured && aiProvider !== 'none'" class="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
-        <p class="font-semibold mb-1">✨ AI meal suggestions are not configured</p>
-        <p>Add your API key to the <code class="bg-amber-100 px-1 rounded">.env</code> file and restart the container:</p>
-        <pre class="mt-2 bg-amber-100 rounded p-2 text-xs overflow-x-auto">AI_PROVIDER=anthropic   # or openai
-AI_API_KEY=sk-ant-...</pre>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-
-        <!-- Gym nights -->
-        <div class="px-5 py-4">
-          <p class="font-medium text-gray-800 mb-1">Gym nights</p>
-          <p class="text-sm text-gray-500 mb-3">On these nights the AI will prefer easy-to-make meals.</p>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
-              <button
-                @click="toggleDay('gym_days', idx)"
-                :class="settings.gym_days.includes(idx) ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
-                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
-                x-text="name"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Eat-out nights -->
-        <div class="px-5 py-4">
-          <p class="font-medium text-gray-800 mb-1">Default eat-out nights</p>
-          <p class="text-sm text-gray-500 mb-3">These days are pre-set as "eating out" in new weekly plans.</p>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="(name, idx) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="idx">
-              <button
-                @click="toggleDay('eat_out_days', idx)"
-                :class="settings.eat_out_days.includes(idx) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'"
-                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
-                x-text="name"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <!-- AI provider -->
-        <div class="px-5 py-4">
-          <p class="font-medium text-gray-800 mb-1">AI provider</p>
-          <p class="text-sm text-gray-500 mb-3">Choose your AI provider. The <code class="bg-gray-100 px-1 rounded">AI_PROVIDER</code> env var overrides this if set.</p>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="opt in [{value: 'anthropic', label: 'Anthropic'}, {value: 'openai', label: 'OpenAI'}, {value: 'none', label: 'Disabled'}]" :key="opt.value">
-              <button
-                @click="settings.ai_provider = opt.value"
-                :class="(settings.ai_provider || 'anthropic') === opt.value ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-300'"
-                class="px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
-                x-text="opt.label"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <!-- AI API key -->
-        <div class="px-5 py-4">
-          <p class="font-medium text-gray-800 mb-1">AI API key</p>
-          <p class="text-sm text-gray-500 mb-3">Stored on the server — never returned by the API. Env var <code class="bg-gray-100 px-1 rounded">AI_API_KEY</code> takes precedence if set.</p>
-          <div x-show="settings.ai_key_configured" class="mb-3">
-            <span class="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-3 py-1 rounded-full">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              Key configured
-            </span>
-          </div>
-          <div class="flex gap-2">
-            <input
-              type="password"
-              x-model="aiKeyInput"
-              :placeholder="settings.ai_key_configured ? 'Enter a new key to replace the existing one' : 'Paste your API key here'"
-              class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
-            />
+      <!-- Home cooked: meal picker -->
+      <div x-show="editDayForm.day_type === 'home_cooked'">
+        <input
+          x-model="mealPickerSearch"
+          type="text"
+          placeholder="Search meals…"
+          class="wfd-input"
+          style="margin-bottom:10px;"
+        />
+        <div style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);">
+          <template x-for="meal in filteredPickerMeals()" :key="meal.id">
             <button
-              @click="saveAiKey()"
-              :disabled="!aiKeyInput || aiKeySaving"
-              class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+              @click="editDayForm.meal_id = meal.id; editDayForm.meal_name = meal.name"
+              :class="editDayForm.meal_id === meal.id ? 'selected' : ''"
+              class="wfd-meal-row"
             >
-              <span x-show="!aiKeySaving">Save key</span>
-              <span x-show="aiKeySaving">Saving…</span>
+              <div class="wfd-meal-icon"
+                :style="meal.meal_type === 'frozen' ? 'background:#d6e6ec' : proteinInfo(meal.protein)?.group === 'veg' ? 'background:var(--sage-tint)' : 'background:var(--primary-tint)'">
+                <span x-text="meal.meal_type === 'frozen' ? '❄️' : (proteinInfo(meal.protein)?.emoji || '🍽')"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p style="font-size:14px;font-weight:700;color:var(--ink);" x-text="meal.name"></p>
+                <p style="font-size:11px;color:var(--muted);margin-top:1px;">
+                  <span x-text="meal.cuisine"></span><span x-show="meal.cuisine && meal.protein"> · </span><span x-text="meal.protein"></span><span x-show="meal.easy_to_make"> · easy</span>
+                </p>
+              </div>
+              <span x-show="editDayForm.meal_id === meal.id" style="color:var(--primary);font-size:16px;">✓</span>
             </button>
-          </div>
-          <p x-show="aiKeySaved" class="mt-1.5 text-xs text-green-600">✓ Key saved</p>
+          </template>
+          <div x-show="filteredPickerMeals().length === 0" style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">No meals found</div>
         </div>
-
-        <!-- Custom AI instructions -->
-        <div class="px-5 py-4">
-          <p class="font-medium text-gray-800 mb-1">Custom AI instructions</p>
-          <p class="text-sm text-gray-500 mb-3">Provide additional context for AI meal suggestions — dietary preferences, ingredient restrictions, cooking style, etc. These are sent alongside every AI generation request.</p>
-          <textarea
-            x-model="settings.custom_instructions"
-            rows="4"
-            placeholder="e.g. We prefer spicy food. Avoid dairy on weeknights. Try to include one vegetarian meal per week."
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand resize-y"
-          ></textarea>
-        </div>
-
-        <div class="px-5 py-4">
-          <button
-            @click="saveSettings()"
-            :disabled="settingsSaving"
-            class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
-          >
-            <span x-show="!settingsSaving">Save settings</span>
-            <span x-show="settingsSaving">Saving…</span>
-          </button>
-          <span x-show="settingsSaved" class="ml-3 text-sm text-green-600">✓ Saved</span>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- ── Day Editor Slide Panel ────────────────────────────── -->
-  <div
-    x-show="dayEditorOpen"
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 bg-black/40 z-50"
-    @click.self="dayEditorOpen = false"
-    role="dialog" aria-modal="true" aria-label="Day editor"
-  >
-    <div
-      class="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl flex flex-col slide-panel"
-      x-transition:enter="transition ease-out duration-250"
-      x-transition:enter-start="translate-x-full"
-      x-transition:enter-end="translate-x-0"
-      x-transition:leave="transition ease-in duration-200"
-      x-transition:leave-start="translate-x-0"
-      x-transition:leave-end="translate-x-full"
-    >
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <div class="flex items-center gap-2">
-          <h2 class="font-semibold text-gray-900" x-text="editingDay ? dayName(editingDay.day_of_week) : ''"></h2>
-          <span x-show="editingDay && settings.gym_days.includes(editingDay.day_of_week)" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">🏋️ Gym night</span>
-        </div>
-        <button @click="dayEditorOpen = false" class="text-gray-400 hover:text-gray-700 text-xl leading-none" aria-label="Close">✕</button>
+        <textarea x-model="editDayForm.notes" rows="2" placeholder="Notes (optional)…" class="wfd-input wfd-textarea" style="margin-top:12px;"></textarea>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-
-        <!-- Day type -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Evening type</label>
-          <div class="flex gap-2">
-            <template x-for="opt in [{v:'home_cooked',l:'Home cooked',c:'green'},{v:'eat_out',l:'Eat out',c:'blue'},{v:'skip',l:'Other',c:'orange'}]" :key="opt.v">
-              <button
-                @click="setEditDayType(opt.v)"
-                :class="editDayForm.day_type === opt.v ? `bg-${opt.c}-600 text-white border-${opt.c}-600` : 'bg-white text-gray-600 border-gray-300'"
-                class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
-                x-text="opt.l"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Meal picker (home_cooked) -->
-        <div x-show="editDayForm.day_type === 'home_cooked'">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Meal</label>
-          <input
-            x-model="mealPickerSearch"
-            type="text"
-            placeholder="Search meals…"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-brand"
-          />
-          <div class="space-y-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200">
-            <template x-for="meal in filteredPickerMeals()" :key="meal.id">
-              <button
-                @click="editDayForm.meal_id = meal.id; editDayForm.meal_name = meal.name"
-                :class="editDayForm.meal_id === meal.id ? 'bg-green-50 border-green-400' : 'bg-white border-transparent hover:bg-gray-50'"
-                class="w-full text-left px-3 py-2.5 border-l-2 transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
-                  <div class="flex gap-1 mt-0.5">
-                    <span x-show="meal.meal_type === 'frozen'" class="text-xs bg-cyan-100 text-cyan-700 rounded px-1 py-0.5" x-text="'❄️ ×' + meal.frozen_quantity"></span>
-                    <span x-show="meal.protein" class="text-xs" :class="proteinChipClass(proteinInfo(meal.protein)?.group)" x-text="(proteinInfo(meal.protein)?.emoji || '') + ' ' + meal.protein"></span>
-                    <span x-show="meal.easy_to_make" class="text-xs text-yellow-600">⚡ easy</span>
-                    <span x-show="meal.has_leftovers" class="text-xs text-blue-600">📦 leftovers</span>
-                    <span x-show="meal.cuisine" class="text-xs text-orange-600" x-text="meal.cuisine"></span>
-                  </div>
-                </div>
-                <span x-show="editDayForm.meal_id === meal.id" class="text-green-500 text-sm">✓</span>
-              </button>
-            </template>
-            <div x-show="filteredPickerMeals().length === 0" class="px-3 py-4 text-sm text-gray-400 text-center">No meals found</div>
-          </div>
-        </div>
-
-        <!-- Custom description (other/skip) -->
-        <div x-show="editDayForm.day_type === 'skip'">
-          <label class="block text-sm font-medium text-gray-700 mb-2">What's happening? <span class="font-normal text-gray-400">(optional)</span></label>
-          <input
-            x-model="editDayForm.custom_name"
-            type="text"
-            placeholder="e.g. Leftovers, Fasting, Travel…"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-          />
-        </div>
-
-        <!-- Custom name (eat_out) -->
-        <div x-show="editDayForm.day_type === 'eat_out'">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Where / what?</label>
-          <input
-            x-model="editDayForm.custom_name"
-            type="text"
-            placeholder="e.g. Chipotle, Thai place, Pizza…"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-2"
-          />
-          <!-- Library quick-picks -->
-          <template x-if="filteredEatOutMeals().length > 0">
-            <div class="space-y-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200">
-              <template x-for="meal in filteredEatOutMeals()" :key="meal.id">
-                <button
-                  @click="editDayForm.custom_name = meal.name"
-                  :class="editDayForm.custom_name === meal.name ? 'bg-blue-50 border-blue-400' : 'bg-white border-transparent hover:bg-gray-50'"
-                  class="w-full text-left px-3 py-2.5 border-l-2 transition-colors flex items-center justify-between"
-                >
-                  <p class="text-sm font-medium text-gray-800" x-text="meal.name"></p>
-                  <span x-show="editDayForm.custom_name === meal.name" class="text-blue-500 text-sm">✓</span>
-                </button>
-              </template>
-            </div>
+      <!-- Eat out -->
+      <div x-show="editDayForm.day_type === 'eat_out'">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:8px;">Saved places</label>
+        <div class="flex flex-wrap gap-1.5 mb-3">
+          <template x-for="meal in filteredEatOutMeals()" :key="meal.id">
+            <button
+              @click="editDayForm.custom_name = meal.name"
+              :class="editDayForm.custom_name === meal.name ? 'selected' : ''"
+              class="wfd-eatout-chip"
+            >🍷 <span x-text="meal.name"></span></button>
           </template>
         </div>
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Or somewhere new</label>
+        <input x-model="editDayForm.custom_name" type="text" placeholder="e.g. that new ramen place" class="wfd-input" style="margin-bottom:10px;" />
+        <textarea x-model="editDayForm.notes" rows="2" placeholder="Notes (optional)…" class="wfd-input wfd-textarea"></textarea>
+      </div>
 
-        <!-- Notes -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-          <textarea
-            x-model="editDayForm.notes"
-            rows="3"
-            placeholder="e.g. Uses leftover chicken from Monday…"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"
-          ></textarea>
-        </div>
+      <!-- Skip / Other -->
+      <div x-show="editDayForm.day_type === 'skip'">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">What's happening? <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+        <input x-model="editDayForm.custom_name" type="text" placeholder="Friends over · order in, traveling, etc." class="wfd-input" style="margin-bottom:10px;" />
+        <textarea x-model="editDayForm.notes" rows="2" placeholder="Notes (optional)…" class="wfd-input wfd-textarea"></textarea>
+      </div>
 
-        <!-- Carry forward -->
-        <label class="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-          <input type="checkbox" x-model="editDayForm.carry_forward" class="w-4 h-4 accent-brand" />
+      <!-- Carry forward + clear -->
+      <div style="margin-top:20px;padding-top:12px;border-top:1px solid var(--line);">
+        <label class="flex items-center gap-3 cursor-pointer select-none" style="padding:4px 0 12px;">
+          <input type="checkbox" x-model="editDayForm.carry_forward" class="w-4 h-4" style="accent-color:var(--primary);" />
           <div>
-            <p class="text-sm font-medium text-gray-700">📌 Carry forward</p>
-            <p class="text-xs text-gray-400">Copy this to next week if that day isn't set yet</p>
+            <p style="font-size:13px;font-weight:700;color:var(--ink);">📌 Carry forward</p>
+            <p style="font-size:11px;color:var(--muted);margin-top:1px;">Copy this to next week if that day isn't set yet</p>
           </div>
         </label>
       </div>
 
-      <div class="px-5 py-4 border-t border-gray-200 flex gap-2">
-        <button
-          @click="saveDay()"
-          :disabled="daySaving"
-          class="flex-1 py-2.5 bg-brand text-white rounded-lg font-medium text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
-        >
+      <!-- Action buttons -->
+      <div class="flex gap-2">
+        <button @click="saveDay()" :disabled="daySaving" class="wfd-btn wfd-btn-accent flex-1">
           <span x-show="!daySaving">Save</span>
           <span x-show="daySaving">Saving…</span>
         </button>
-        <button @click="dayEditorOpen = false" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+        <button @click="dayEditorOpen = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ── Clear Week Confirm Modal ─────────────────────────── -->
-  <div
-    x-show="confirmClearOpen"
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-    @click.self="confirmClearOpen = false"
-    role="dialog" aria-modal="true" aria-label="Confirm clear week"
-  >
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-      <h2 class="font-semibold text-gray-900 text-lg mb-2">Clear this week?</h2>
-      <p class="text-sm text-gray-500 mb-6">All meals and notes for <span class="font-medium text-gray-700" x-text="weekLabel(currentPlan?.week_start)"></span> will be reset. Gym and eat-out defaults will be re-applied.</p>
-      <div class="flex gap-3 justify-end">
-        <button
-          @click="confirmClearOpen = false"
-          class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-        >Cancel</button>
-        <button
-          @click="clearWeek()"
-          :disabled="clearingWeek"
-          class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-        >
-          <span x-show="!clearingWeek">Clear week</span>
-          <span x-show="clearingWeek">Clearing…</span>
-        </button>
-      </div>
+
+<!-- ── Clear Week Confirm ────────────────────────────────────── -->
+<div
+  x-show="confirmClearOpen"
+  x-transition:enter="transition ease-out duration-200"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-150"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  class="wfd-backdrop"
+  style="align-items:center;"
+  @click.self="confirmClearOpen = false"
+  role="dialog" aria-modal="true" aria-label="Confirm clear week"
+>
+  <div class="wfd-confirm-modal">
+    <h2 style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:8px;">Clear this week?</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;">All meals and notes for <strong x-text="weekLabel(currentPlan?.week_start)"></strong> will be reset. Gym and eat-out defaults will be re-applied.</p>
+    <div class="flex gap-2 justify-end">
+      <button @click="confirmClearOpen = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
+      <button @click="clearWeek()" :disabled="clearingWeek" class="wfd-btn" style="background:var(--red);color:#fff;">
+        <span x-show="!clearingWeek">Clear week</span>
+        <span x-show="clearingWeek">Clearing…</span>
+      </button>
     </div>
   </div>
+</div>
 
-  <!-- ── AI Generate Confirm Modal ────────────────────────── -->
-  <div
-    x-show="confirmAIOpen"
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-150"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-    @click.self="confirmAIOpen = false"
-    role="dialog" aria-modal="true" aria-label="Confirm AI plan generation"
-  >
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-      <h2 class="font-semibold text-gray-900 text-lg mb-2">Overwrite existing plan?</h2>
-      <p class="text-sm text-gray-500 mb-6">This week already has a meal plan. Generating a new AI plan will overwrite the existing meals and notes. Are you sure you want to continue?</p>
-      <div class="flex gap-3 justify-end">
-        <button
-          @click="confirmAIOpen = false"
-          class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-        >Cancel</button>
-        <button
-          @click="confirmGenerateAI()"
-          :disabled="aiLoading"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          <span x-show="!aiLoading">Generate anyway</span>
-          <span x-show="aiLoading">Generating…</span>
-        </button>
-      </div>
+
+<!-- ── AI Generate Confirm ───────────────────────────────────── -->
+<div
+  x-show="confirmAIOpen"
+  x-transition:enter="transition ease-out duration-200"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-150"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  class="wfd-backdrop"
+  style="align-items:center;"
+  @click.self="confirmAIOpen = false"
+  role="dialog" aria-modal="true" aria-label="Confirm AI plan generation"
+>
+  <div class="wfd-confirm-modal">
+    <h2 style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:8px;">Overwrite existing plan?</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;">This week already has a meal plan. Generating a new AI plan will overwrite the existing meals and notes.</p>
+    <div class="flex gap-2 justify-end">
+      <button @click="confirmAIOpen = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
+      <button @click="confirmGenerateAI()" :disabled="aiLoading" class="wfd-btn wfd-btn-accent">
+        <span x-show="!aiLoading">Generate anyway</span>
+        <span x-show="aiLoading">Generating…</span>
+      </button>
     </div>
   </div>
+</div>
 
-  <!-- ── Meal Editor Modal ─────────────────────────────────── -->
-  <div
-    x-show="mealEditorOpen"
-    x-transition:enter="transition ease-out duration-200"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-    @click.self="mealEditorOpen = false"
-    role="dialog" aria-modal="true" aria-label="Meal editor"
-  >
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h2 class="font-semibold text-gray-900" x-text="editingMeal ? 'Edit Meal' : 'Add Meal'"></h2>
-        <button @click="mealEditorOpen = false" class="text-gray-400 hover:text-gray-700 text-xl" aria-label="Close">✕</button>
+
+<!-- ── Meal Editor Modal ─────────────────────────────────────── -->
+<div
+  x-show="mealEditorOpen"
+  x-transition:enter="transition ease-out duration-200"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-150"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  class="wfd-backdrop"
+  style="align-items:center;"
+  @click.self="mealEditorOpen = false"
+  role="dialog" aria-modal="true" aria-label="Meal editor"
+>
+  <div class="wfd-modal">
+    <div class="wfd-sheet-header">
+      <p style="font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-0.015em;" x-text="editingMeal ? 'Edit Meal' : 'Add Meal'"></p>
+      <button @click="mealEditorOpen = false" class="wfd-close-btn" aria-label="Close">×</button>
+    </div>
+    <div class="wfd-sheet-body">
+
+      <!-- Name -->
+      <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Name <span style="color:var(--red);">*</span></label>
+      <input x-model="mealForm.name" type="text" placeholder="e.g. Mushroom Risotto" class="wfd-input" style="margin-bottom:14px;" />
+
+      <!-- Type -->
+      <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Type</label>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-4">
+        <template x-for="opt in [{v:'home_cooked',l:'🍳 Home cooked'},{v:'frozen',l:'❄️ Frozen'},{v:'eat_out',l:'🍷 Eat out'},{v:'other',l:'Other'}]" :key="opt.v">
+          <button
+            @click="mealForm.meal_type = opt.v"
+            :class="mealForm.meal_type === opt.v ? 'active' : ''"
+            class="wfd-type-pill"
+            x-text="opt.l"
+          ></button>
+        </template>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-          <input x-model="mealForm.name" type="text" placeholder="Chicken stir fry…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <template x-for="opt in [{v:'home_cooked',l:'Home cooked'},{v:'frozen',l:'Frozen'},{v:'eat_out',l:'Eat out'},{v:'other',l:'Other'}]" :key="opt.v">
-              <button
-                @click="mealForm.meal_type = opt.v"
-                :class="mealForm.meal_type === opt.v ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-300'"
-                class="py-2 rounded-lg border text-sm font-medium transition-colors"
-                x-text="opt.l"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <div x-show="mealForm.meal_type === 'home_cooked' || mealForm.meal_type === 'other'">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Protein</label>
-          <div class="flex flex-wrap gap-1.5">
+      <!-- Protein (home_cooked / other) -->
+      <div x-show="mealForm.meal_type === 'home_cooked' || mealForm.meal_type === 'other'" class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Protein</label>
+        <div class="flex flex-wrap gap-1.5">
+          <button
+            @click="mealForm.protein = ''"
+            :class="mealForm.protein === '' ? (true ? 'active-meat' : '') : ''"
+            class="wfd-protein-pill"
+            style="background:var(--surface-2);border-color:var(--line);"
+            :style="mealForm.protein === '' ? 'background:var(--ink);color:var(--surface-2);border-color:var(--ink)' : ''"
+          >None</button>
+          <template x-for="p in proteinInventory" :key="p.protein_name">
             <button
-              @click="mealForm.protein = ''"
-              :class="mealForm.protein === '' ? 'bg-gray-200 text-gray-700 ring-1 ring-gray-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
-              class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-            >None</button>
-            <template x-for="p in proteinInventory" :key="p.protein_name">
-              <button
-                @click="mealForm.protein = p.protein_name"
-                :class="mealForm.protein === p.protein_name
-                  ? (p.group === 'meat' ? 'bg-red-200 text-red-800 ring-1 ring-red-400' : 'bg-teal-200 text-teal-800 ring-1 ring-teal-400')
-                  : (p.group === 'meat' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-teal-50 text-teal-600 hover:bg-teal-100')"
-                class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-                x-text="p.emoji + ' ' + p.display_name"
-              ></button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Frozen quantity (only for frozen meals) -->
-        <div x-show="mealForm.meal_type === 'frozen'">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Frozen quantity</label>
-          <div class="flex items-center gap-2">
-            <button @click="mealForm.frozen_quantity = Math.max(0, mealForm.frozen_quantity - 1)" class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 text-lg font-bold hover:bg-cyan-200 transition-colors">-</button>
-            <span class="text-lg font-semibold text-cyan-700 min-w-[3ch] text-center" x-text="mealForm.frozen_quantity"></span>
-            <button @click="mealForm.frozen_quantity++" class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 text-lg font-bold hover:bg-cyan-200 transition-colors">+</button>
-            <span class="text-sm text-gray-500">portions</span>
-          </div>
-        </div>
-
-        <!-- Protein servings (for home_cooked only) -->
-        <div x-show="mealForm.meal_type === 'home_cooked'">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Protein servings needed</label>
-          <p class="text-xs text-gray-400 mb-2">How many standard servings of protein this meal requires</p>
-          <input x-model.number="mealForm.protein_servings" type="number" min="0" class="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Cuisine</label>
-          <div class="flex flex-wrap gap-1.5">
-            <button @click="mealForm.cuisine = ''" :class="mealForm.cuisine === '' ? 'bg-gray-200 text-gray-700 ring-1 ring-gray-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'" class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors">None</button>
-            <template x-for="c in cuisines" :key="c">
-              <button @click="mealForm.cuisine = c" :class="mealForm.cuisine === c ? 'bg-orange-100 text-orange-800 ring-1 ring-orange-400' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'" class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors" x-text="c"></button>
-            </template>
-          </div>
-        </div>
-
-        <div class="flex gap-4">
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" x-model="mealForm.easy_to_make" class="w-4 h-4 accent-yellow-500" />
-            <span class="text-sm text-gray-700">⚡ Easy to make</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" x-model="mealForm.has_leftovers" class="w-4 h-4 accent-blue-500" />
-            <span class="text-sm text-gray-700">📦 Has leftovers</span>
-          </label>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Recipe link</label>
-          <input x-model="mealForm.recipe_url" type="url" placeholder="https://…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea x-model="mealForm.notes" rows="3" placeholder="Any notes about this meal…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand"></textarea>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Shared ingredients with</label>
-          <input x-model="mealForm.shared_ingredients" type="text" placeholder="e.g. Same chicken as Monday's tacos" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              @click="mealForm.protein = p.protein_name"
+              class="wfd-protein-pill"
+              :class="mealForm.protein === p.protein_name ? (p.group === 'meat' ? 'active-meat' : 'active-veg') : ''"
+              x-text="p.emoji + ' ' + p.display_name"
+            ></button>
+          </template>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-t border-gray-200 flex items-center gap-2">
+      <!-- Frozen quantity -->
+      <div x-show="mealForm.meal_type === 'frozen'" class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Frozen quantity</label>
+        <div class="flex items-center gap-2">
+          <button @click="mealForm.frozen_quantity = Math.max(0, mealForm.frozen_quantity - 1)" class="wfd-counter-btn">−</button>
+          <span style="font-size:18px;font-weight:700;color:var(--ink);min-width:24px;text-align:center;" x-text="mealForm.frozen_quantity"></span>
+          <button @click="mealForm.frozen_quantity++" class="wfd-counter-btn">+</button>
+          <span style="font-size:13px;color:var(--muted);">portions</span>
+        </div>
+      </div>
+
+      <!-- Protein servings (home_cooked) -->
+      <div x-show="mealForm.meal_type === 'home_cooked'" class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:4px;">Protein servings needed</label>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:6px;">How many standard servings this meal requires</p>
+        <input x-model.number="mealForm.protein_servings" type="number" min="0" class="wfd-input" style="width:80px;font-size:14px;" />
+      </div>
+
+      <!-- Cuisine -->
+      <div class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Cuisine</label>
+        <div class="flex flex-wrap gap-1.5">
+          <button @click="mealForm.cuisine = ''" class="wfd-filter-pill" :class="mealForm.cuisine === '' ? 'active' : ''">None</button>
+          <template x-for="c in cuisines" :key="c">
+            <button @click="mealForm.cuisine = c" class="wfd-filter-pill" :class="mealForm.cuisine === c ? 'active' : ''" x-text="c"></button>
+          </template>
+        </div>
+      </div>
+
+      <!-- Toggles (home_cooked / frozen / other) -->
+      <div x-show="mealForm.meal_type !== 'eat_out'" style="border-top:1px solid var(--line);margin-bottom:14px;">
+        <label class="flex items-center justify-between cursor-pointer select-none" style="padding:10px 0;border-bottom:1px solid var(--line);">
+          <div>
+            <p style="font-size:13px;font-weight:700;color:var(--ink);">⚡ Easy to make</p>
+            <p style="font-size:11px;color:var(--muted);">Good for weeknights</p>
+          </div>
+          <button
+            class="wfd-switch" :class="mealForm.easy_to_make ? 'wfd-switch-on' : ''"
+            @click="mealForm.easy_to_make = !mealForm.easy_to_make"
+            role="switch" :aria-checked="mealForm.easy_to_make">
+            <span class="wfd-switch-knob"></span>
+          </button>
+        </label>
+        <label class="flex items-center justify-between cursor-pointer select-none" style="padding:10px 0;">
+          <div>
+            <p style="font-size:13px;font-weight:700;color:var(--ink);">📦 Has leftovers</p>
+            <p style="font-size:11px;color:var(--muted);">Counts as 2 meals</p>
+          </div>
+          <button
+            class="wfd-switch" :class="mealForm.has_leftovers ? 'wfd-switch-on' : ''"
+            @click="mealForm.has_leftovers = !mealForm.has_leftovers"
+            role="switch" :aria-checked="mealForm.has_leftovers">
+            <span class="wfd-switch-knob"></span>
+          </button>
+        </label>
+      </div>
+
+      <!-- Recipe URL -->
+      <div class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Recipe link</label>
+        <input x-model="mealForm.recipe_url" type="url" placeholder="https://…" class="wfd-input" />
+      </div>
+
+      <!-- Notes -->
+      <div class="mb-4">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Notes</label>
+        <textarea x-model="mealForm.notes" rows="2" placeholder="Any notes about this meal…" class="wfd-input wfd-textarea"></textarea>
+      </div>
+
+      <!-- Shared ingredients -->
+      <div class="mb-2">
+        <label style="font-size:12px;font-weight:700;color:var(--ink-2);display:block;margin-bottom:6px;">Shared ingredients with</label>
+        <input x-model="mealForm.shared_ingredients" type="text" placeholder="e.g. Same chicken as Monday's tacos" class="wfd-input" />
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex gap-2 mt-4">
         <button
           @click="saveMeal()"
           :disabled="mealSaving || !mealForm.name.trim()"
-          class="flex-1 py-2.5 bg-brand text-white rounded-lg font-medium text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
+          class="wfd-btn wfd-btn-accent flex-1"
         >
           <span x-show="!mealSaving" x-text="editingMeal ? 'Save changes' : 'Add meal'"></span>
           <span x-show="mealSaving">Saving…</span>
         </button>
-        <button x-show="editingMeal" @click="deleteMeal()" class="px-4 py-2.5 border border-red-200 text-red-500 rounded-lg text-sm hover:bg-red-50 transition-colors">Delete</button>
-        <button @click="mealEditorOpen = false" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+        <button x-show="editingMeal" @click="deleteMeal()" class="wfd-btn wfd-btn-secondary" style="color:var(--red);border-color:var(--red);">Delete</button>
+        <button @click="mealEditorOpen = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="/static/app.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>
