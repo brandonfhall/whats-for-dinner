@@ -6,7 +6,7 @@ Runs on your home network with no authentication, no cloud dependency, and no ex
 
 [![Docker Hub](https://img.shields.io/docker/pulls/brandonh317/whats-for-dinner?label=Docker%20Hub)](https://hub.docker.com/r/brandonh317/whats-for-dinner)
 
-![What's For Dinner weekly planner view](docs/image.png)
+![What's For Dinner weekly planner — Hearth Dusty Blue theme](docs/image.png)
 
 ---
 
