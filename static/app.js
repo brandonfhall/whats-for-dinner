@@ -260,7 +260,7 @@ function app() {
       const end = new Date(d);
       end.setDate(end.getDate() + 6);
       const fmt = (dt) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      return `Week of ${fmt(d)} – ${fmt(end)}`;
+      return `${fmt(d)} – ${fmt(end)}`;
     },
 
     sortedDays(plan) {
