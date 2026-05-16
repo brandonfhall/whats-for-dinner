@@ -154,7 +154,7 @@ whats-for-dinner/
 │   ├── app.js            # All frontend logic (Alpine.js)
 │   └── css/
 │       └── input.css     # Tailwind v4 source config
-├── tests/                # 193 tests (pytest, in-memory SQLite)
+├── tests/                # pytest, in-memory SQLite
 ├── docker-compose.yml    # Production compose (Traefik)
 ├── docker-compose.local.yml  # Local dev compose (port mapping + demo mode)
 ├── Dockerfile            # Multi-stage build
@@ -216,7 +216,7 @@ Settings
 
 ## Testing
 
-208 tests covering meals, plans, inventory, settings, AI, security middleware, database migrations, demo mode, and frontend asset configuration. Every test runs against a fresh in-memory SQLite database.
+Tests cover meals, plans, inventory, settings, AI, security middleware, database migrations, demo mode, and frontend asset configuration. Every test runs against a fresh in-memory SQLite database.
 
 ```bash
 # Set up
