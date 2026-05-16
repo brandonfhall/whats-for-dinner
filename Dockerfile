@@ -32,12 +32,6 @@ COPY --from=frontend /build/static/vendor/alpine.min.js ./static/vendor/alpine.m
 
 RUN mkdir -p /app/data
 
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
-
-RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 --ingroup appgroup appuser && \
-    chown -R appuser:appgroup /app /app/data
-
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
