@@ -108,7 +108,7 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 4. **Frontend**: Add data properties and methods to `app()` in `static/app.js`, add UI in `static/index.html`
 5. **Tests**: Add tests following existing patterns, run full suite to verify no regressions
 6. **Tailwind classes**: If using new Tailwind classes not already in the HTML, they may need to be added to the safelist in `static/css/input.css`
-7. **Documentation**: Update `docs/ARCHITECTURE.md` (schema, endpoints, features), `README.md` (features, API, project layout), and `DOCKERHUB.md` (features list) to reflect the changes
+7. **Documentation**: Update `docs/ARCHITECTURE.md` (schema, endpoints, features — this is the deep technical reference). `README.md` and `DOCKERHUB.md` are user-facing high-level overviews; do not add per-feature implementation detail or UI call-outs to those files
 8. **Commit messages**: Use clear, descriptive commit messages that explain the "why" behind changes, not just the "what" (e.g., "Add frozen quantity field to meals for better inventory tracking" instead of "Add frozen_quantity column")
 9. **Code style**: Follow existing code style and conventions for consistency, even if they differ from your personal preferences
 10. **Branching**: all work happens on feature branches cut from `develop`. Open PRs into `develop`, not `main`. `main` is production — only merge `develop` → `main` when releasing. Never commit directly to `main` or `develop`. Use descriptive branch names (e.g., `feature/add-ai-prompt-templates`, `bugfix/fix-meal-update-quantity-floor`)

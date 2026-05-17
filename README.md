@@ -18,7 +18,7 @@ Add every meal your household knows and likes. Each entry tracks the meal name, 
 ### Weekly planner
 A Sunday-through-Saturday dinner grid. Click any day to assign it:
 
-- **Home cooked** — pick from your meal library (or add a new meal on the spot with the "+ New" button)
+- **Home cooked** — pick from your meal library
 - **Frozen** — pick a frozen meal (deducts from inventory)
 - **Eat out** — enter a restaurant or cuisine (e.g. "Chipotle")
 - **Other** — free-text note (e.g. "Leftovers", "Travel")
