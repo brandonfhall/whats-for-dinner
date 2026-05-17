@@ -1059,13 +1059,21 @@
 
       <!-- Home cooked: meal picker -->
       <div x-show="editDayForm.day_type === 'home_cooked'">
-        <input
-          x-model="mealPickerSearch"
-          type="text"
-          placeholder="Search meals…"
-          class="wfd-input"
-          style="margin-bottom:10px;"
-        />
+        <div class="flex gap-2 items-center" style="margin-bottom:10px;">
+          <input
+            x-model="mealPickerSearch"
+            type="text"
+            placeholder="Search meals…"
+            class="wfd-input"
+            style="margin-bottom:0;flex:1;"
+          />
+          <button
+            @click="openMealEditorFromDayEditor()"
+            class="wfd-btn wfd-btn-secondary"
+            style="flex-shrink:0;padding:0 12px;font-size:12px;white-space:nowrap;"
+            title="Add a new meal to the library"
+          >+ New</button>
+        </div>
         <div style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);">
           <template x-for="meal in filteredPickerMeals()" :key="meal.id">
             <button
@@ -1086,7 +1094,10 @@
               <span x-show="editDayForm.meal_id === meal.id" style="color:var(--primary);font-size:16px;">✓</span>
             </button>
           </template>
-          <div x-show="filteredPickerMeals().length === 0" style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">No meals found</div>
+          <div x-show="filteredPickerMeals().length === 0" style="padding:16px;text-align:center;font-size:13px;color:var(--muted);">
+            No meals found —
+            <button @click="openMealEditorFromDayEditor()" style="color:var(--primary);background:none;border:none;font:inherit;font-size:13px;cursor:pointer;padding:0;text-decoration:underline;">add it to the library</button>
+          </div>
         </div>
         <textarea x-model="editDayForm.notes" rows="2" placeholder="Notes (optional)…" class="wfd-input wfd-textarea" style="margin-top:12px;"></textarea>
       </div>
@@ -1206,13 +1217,13 @@
   x-transition:leave-end="opacity-0"
   class="wfd-backdrop"
   style="align-items:center;"
-  @click.self="mealEditorOpen = false"
+  @click.self="mealEditorOpen = false; addingFromDayEditor = false"
   role="dialog" aria-modal="true" aria-label="Meal editor"
 >
   <div class="wfd-modal">
     <div class="wfd-sheet-header">
       <p style="font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-0.015em;" x-text="editingMeal ? 'Edit Meal' : 'Add Meal'"></p>
-      <button @click="mealEditorOpen = false" class="wfd-close-btn" aria-label="Close">×</button>
+      <button @click="mealEditorOpen = false; addingFromDayEditor = false" class="wfd-close-btn" aria-label="Close">×</button>
     </div>
     <div class="wfd-sheet-body">
 
@@ -1341,7 +1352,7 @@
           <span x-show="mealSaving">Saving…</span>
         </button>
         <button x-show="editingMeal" @click="deleteMeal()" class="wfd-btn wfd-btn-secondary" style="color:var(--red);border-color:var(--red);">Delete</button>
-        <button @click="mealEditorOpen = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
+        <button @click="mealEditorOpen = false; addingFromDayEditor = false" class="wfd-btn wfd-btn-secondary">Cancel</button>
       </div>
     </div>
   </div>

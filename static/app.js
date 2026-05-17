@@ -67,6 +67,7 @@ function app() {
 
     // ── Meal editor ─────────────────────────────────────────
     mealEditorOpen: false,
+    addingFromDayEditor: false,
     editingMeal: null,
     mealForm: { name: '', meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '', frozen_quantity: 0, protein_servings: 1 },
     mealSearch: '',
@@ -434,6 +435,13 @@ function app() {
       this.mealEditorOpen = true;
     },
 
+    openMealEditorFromDayEditor() {
+      this.addingFromDayEditor = true;
+      this.editingMeal = null;
+      this.mealForm = { name: this.mealPickerSearch, meal_type: 'home_cooked', notes: '', recipe_url: '', has_leftovers: false, easy_to_make: false, shared_ingredients: '', protein: '', cuisine: '', frozen_quantity: 0, protein_servings: 1 };
+      this.mealEditorOpen = true;
+    },
+
     async saveMeal() {
       if (!this.mealForm.name.trim()) return;
       this.mealSaving = true;
@@ -446,8 +454,14 @@ function app() {
           const created = await this.api('POST', '/meals', this.mealForm);
           this.meals.push(created);
           this.meals.sort((a, b) => a.name.localeCompare(b.name));
+          if (this.addingFromDayEditor) {
+            this.editDayForm.meal_id = created.id;
+            this.editDayForm.meal_name = created.name;
+            this.mealPickerSearch = '';
+          }
         }
         this.mealEditorOpen = false;
+        this.addingFromDayEditor = false;
       } catch (e) {
         this.handleError('Failed to save', e);
       } finally {
