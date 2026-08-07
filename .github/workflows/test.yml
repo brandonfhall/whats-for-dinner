@@ -15,61 +15,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Cache pip
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
-
-      - name: Lint with flake8
-        run: |
-          pip install flake8
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Run tests
-        run: pytest
-        env:
-          # AI keys are not available in CI — tests mock all AI calls
-          AI_API_KEY: ""
-          AI_PROVIDER: "none"
+    uses: ./.github/workflows/_reusable-python-test.yml
 
   docker:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Build Docker image
-        run: docker build . --file Dockerfile --tag app-test:latest
-
-      - name: Verify frontend assets were compiled into image
-        run: |
-          docker run --rm app-test:latest sh -c "
-            test -s /app/static/css/tailwind.css && echo 'tailwind.css OK' &&
-            test -s /app/static/vendor/alpine.min.js && echo 'alpine.min.js OK'
-          "
-
-      - name: Verify safelisted classes are present in compiled CSS
-        run: |
-          docker run --rm app-test:latest sh -c "
-            for cls in bg-green-600 border-green-600 bg-blue-600 border-blue-600 bg-gray-600 border-gray-600 bg-orange-600 border-orange-600; do
-              grep -q \"\$cls\" /app/static/css/tailwind.css && echo \"\$cls OK\" || { echo \"\$cls MISSING\"; exit 1; }
-            done
-          "
+    uses: ./.github/workflows/_reusable-docker-smoke-test.yml
