@@ -30,6 +30,7 @@ def _setup_logging():
     )
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
     # Replace uvicorn's per-request access log with our own middleware
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
