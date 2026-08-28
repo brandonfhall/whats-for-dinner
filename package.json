@@ -6,6 +6,6 @@
     "@tailwindcss/cli": "^4.3.3"
   },
   "dependencies": {
-    "alpinejs": "^3.16.1"
+    "alpinejs": "^3.16.2"
   }
 }
