@@ -852,3 +852,45 @@ def test_call_openai_compatible_none_content_raises_clear_error():
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "empty response" in str(exc).lower()
+
+
+def test_call_openai_compatible_allow_reasoning_drops_max_tokens():
+    """AI_ALLOW_REASONING_OPENAI_COMPATIBLE=true omits max_tokens from the request entirely,
+    even if AI_MAX_TOKENS_OPENAI_COMPATIBLE is also set — reasoning takes precedence."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {
+            "AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true",
+            "AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000",
+        }):
+            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert result == [{"day_of_week": 0}]
+    assert "max_tokens" not in mock_instance.chat.completions.create.call_args.kwargs
+
+
+def test_call_openai_compatible_allow_reasoning_empty_content_still_raises():
+    """Even with the cap removed, an empty response should still raise a clear error,
+    not crash — the message just shouldn't blame max_tokens this time."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=""))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {"AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true"}):
+            try:
+                _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+                assert False, "expected ValueError"
+            except ValueError as exc:
+                assert "empty response" in str(exc).lower()
