@@ -287,27 +287,37 @@ def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
     higher than the other providers because reasoning models (e.g. GLM, DeepSeek)
     spend an unpredictable chunk of the budget on hidden reasoning tokens before
     writing the visible answer — too low a cap returns empty content, not an error.
+    AI_ALLOW_REASONING_OPENAI_COMPATIBLE drops the cap entirely (no max_tokens sent)
+    for models/proxies where per-request reasoning effort can't be controlled another
+    way — there's no upper bound at that point, so a slow or looping model runs until
+    AI_TIMEOUT instead of failing fast.
     """
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    allow_reasoning = os.getenv("AI_ALLOW_REASONING_OPENAI_COMPATIBLE", "").lower() in ("true", "1", "yes")
     max_tokens = int(os.getenv("AI_MAX_TOKENS_OPENAI_COMPATIBLE", "4096"))
     client = OpenAI(api_key=key, base_url=base_url, timeout=timeout)
-    response = client.chat.completions.create(
-        model=os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
-        messages=[
+    kwargs = {
+        "model": os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
+        "messages": [
             {
                 "role": "system",
                 "content": "You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
             },
             {"role": "user", "content": prompt},
         ],
-        max_tokens=max_tokens,
-    )
+    }
+    if not allow_reasoning:
+        kwargs["max_tokens"] = max_tokens
+    response = client.chat.completions.create(**kwargs)
     raw = (response.choices[0].message.content or "").strip()
     if not raw:
+        if allow_reasoning:
+            raise ValueError("Model returned an empty response even with AI_ALLOW_REASONING_OPENAI_COMPATIBLE set.")
         raise ValueError(
             "Model returned an empty response. If it's a reasoning model, it likely spent "
             f"the full max_tokens ({max_tokens}) budget on hidden reasoning before writing "
-            "an answer — try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE."
+            "an answer — try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE, or set "
+            "AI_ALLOW_REASONING_OPENAI_COMPATIBLE=true to remove the cap entirely."
         )
     parsed = json.loads(raw)
     if isinstance(parsed, list):
