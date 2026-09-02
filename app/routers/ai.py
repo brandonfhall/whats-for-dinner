@@ -283,9 +283,13 @@ def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
 
     response_format={"type": "json_object"} isn't guaranteed to be honoured by every
     model behind an OpenAI-compatible proxy, so the JSON-array-or-wrapped-object
-    fallback below matters more here than for OpenAI itself.
+    fallback below matters more here than for OpenAI itself. max_tokens defaults
+    higher than the other providers because reasoning models (e.g. GLM, DeepSeek)
+    spend an unpredictable chunk of the budget on hidden reasoning tokens before
+    writing the visible answer — too low a cap returns empty content, not an error.
     """
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    max_tokens = int(os.getenv("AI_MAX_TOKENS_OPENAI_COMPATIBLE", "4096"))
     client = OpenAI(api_key=key, base_url=base_url, timeout=timeout)
     response = client.chat.completions.create(
         model=os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
@@ -296,9 +300,15 @@ def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
             },
             {"role": "user", "content": prompt},
         ],
-        max_tokens=1024,
+        max_tokens=max_tokens,
     )
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
+    if not raw:
+        raise ValueError(
+            "Model returned an empty response. If it's a reasoning model, it likely spent "
+            f"the full max_tokens ({max_tokens}) budget on hidden reasoning before writing "
+            "an answer — try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE."
+        )
     parsed = json.loads(raw)
     if isinstance(parsed, list):
         return parsed
