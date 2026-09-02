@@ -8,7 +8,7 @@ Household meal planning web application for two people. Single-container Docker 
 
 - **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0, SQLite
 - **Frontend**: Alpine.js + Tailwind CSS v4 (no build step in dev; compiled at Docker build time)
-- **AI**: Anthropic Claude (default) or OpenAI, configurable via `AI_PROVIDER` env var
+- **AI**: Anthropic Claude (default), OpenAI, or any self-hosted OpenAI-compatible endpoint (e.g. LiteLLM), configurable via `AI_PROVIDER` env var
 - **Container**: Single Docker image, docker-compose with Traefik labels
 
 ## High-Level Architecture
@@ -54,11 +54,11 @@ Household meal planning web application for two people. Single-container Docker 
 +---------------------------+
              ^
              |
-+---------------------------+
-|   AI Provider (external)  |
-|  Claude API / OpenAI API  |
-|  Called from /api/ai      |
-+---------------------------+
++-----------------------------------------------+
+|  AI Provider (external/self-hosted)           |
+|  Claude API / OpenAI API / OpenAI-compatible  |
+|  Called from /api/ai                          |
++-----------------------------------------------+
 ```
 
 ## Database Schema
@@ -117,7 +117,7 @@ Household meal planning web application for two people. Single-container Docker 
 ### settings
 | Column | Type | Notes                                    |
 |--------|------|------------------------------------------|
-| key    | TEXT | PK (gym_days, eat_out_days, ai_provider, ai_api_key, custom_instructions) |
+| key    | TEXT | PK (gym_days, eat_out_days, ai_provider, ai_api_key, ai_base_url, custom_instructions) |
 | value  | TEXT | JSON-encoded                             |
 
 ## API Endpoints
@@ -189,7 +189,7 @@ Household meal planning web application for two people. Single-container Docker 
    - AI-generated day notes are prefixed with "AI - " and appended to existing notes rather than overwriting
 6. **Shopping List**: Read-only list comparing plan needs vs inventory (protein stock + frozen meal count)
 7. **Month View**: Calendar overview, click to navigate to any week
-8. **Settings**: Gym days, eat-out days, AI provider selector (anthropic/openai/none; env var `AI_PROVIDER` takes precedence), AI API key (write-only — stored in DB, never returned by the API; env var `AI_API_KEY` takes precedence), custom AI instructions
+8. **Settings**: Gym days, eat-out days, AI provider selector (anthropic/openai/openai_compatible/none; env var `AI_PROVIDER` takes precedence), AI API key (write-only — stored in DB, never returned by the API; env var `AI_API_KEY` takes precedence), AI base URL (used by the openai_compatible provider; env var `AI_BASE_URL` takes precedence), custom AI instructions
 9. **Demo Mode**: `DEMO_MODE=true` env var seeds ~20 sample meals (varied types, proteins, cuisines) and protein inventory quantities on first startup; skips if meals already exist
 
 ## Frontend Structure

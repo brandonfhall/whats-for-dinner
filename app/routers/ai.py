@@ -26,7 +26,12 @@ def _resolve_key(settings: dict) -> str:
     return os.getenv("AI_API_KEY") or settings.get("ai_api_key", "")
 
 
-def _check_configured(provider: str, key: str) -> tuple[bool, str | None]:
+def _resolve_base_url(settings: dict) -> str:
+    """Return the base URL for the openai_compatible provider: env var takes precedence."""
+    return os.getenv("AI_BASE_URL") or settings.get("ai_base_url", "")
+
+
+def _check_configured(provider: str, key: str, base_url: str = "") -> tuple[bool, str | None]:
     """Return (is_configured, reason_if_not).
     reason=None means intentionally disabled (provider='none'), not misconfigured.
     """
@@ -34,6 +39,8 @@ def _check_configured(provider: str, key: str) -> tuple[bool, str | None]:
         return False, None
     if not key:
         return False, "AI_API_KEY is not configured. Set it in Settings or your .env file."
+    if provider == "openai_compatible" and not base_url:
+        return False, "AI_BASE_URL is not configured. Set it in Settings or your .env file."
     return True, None
 
 
@@ -42,7 +49,8 @@ def ai_status(db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
     key = _resolve_key(settings)
-    configured, reason = _check_configured(provider, key)
+    base_url = _resolve_base_url(settings)
+    configured, reason = _check_configured(provider, key, base_url)
     return {"configured": configured, "provider": provider, "reason": reason}
 
 
@@ -270,6 +278,36 @@ def _call_openai(prompt: str, key: str) -> list[dict]:
     raise ValueError("Unexpected OpenAI response shape")
 
 
+def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
+    """Call a self-hosted OpenAI-compatible endpoint (LiteLLM, Ollama, vLLM, etc.).
+
+    response_format={"type": "json_object"} isn't guaranteed to be honoured by every
+    model behind an OpenAI-compatible proxy, so the JSON-array-or-wrapped-object
+    fallback below matters more here than for OpenAI itself.
+    """
+    timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    client = OpenAI(api_key=key, base_url=base_url, timeout=timeout)
+    response = client.chat.completions.create(
+        model=os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=1024,
+    )
+    raw = response.choices[0].message.content.strip()
+    parsed = json.loads(raw)
+    if isinstance(parsed, list):
+        return parsed
+    for v in parsed.values():
+        if isinstance(v, list):
+            return v
+    raise ValueError("Unexpected response shape")
+
+
 def _apply_suggestions(
     plan_id: int,
     suggestions: list[dict],
@@ -348,6 +386,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
     key = _resolve_key(settings)
+    base_url = _resolve_base_url(settings)
 
     library = _get_meal_library(db)
     if not library:
@@ -367,7 +406,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         current_week_context=week_context,
     )
 
-    configured, reason = _check_configured(provider, key)
+    configured, reason = _check_configured(provider, key, base_url)
     if not configured:
         if reason is None:
             raise HTTPException(status_code=503, detail="AI is disabled (AI_PROVIDER=none).")
@@ -381,6 +420,8 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     try:
         if provider == "openai":
             raw_suggestions = _call_openai(prompt, key)
+        elif provider == "openai_compatible":
+            raw_suggestions = _call_openai_compatible(prompt, key, base_url)
         else:
             raw_suggestions = _call_anthropic(prompt, key)
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:

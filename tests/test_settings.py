@@ -13,6 +13,7 @@ def test_get_settings_returns_defaults(client):
     assert data["gym_days"] == []
     assert data["eat_out_days"] == []
     assert data["ai_provider"] == "anthropic"
+    assert data["ai_base_url"] == ""
 
 
 def test_get_settings_ai_key_not_exposed(client):
@@ -60,6 +61,15 @@ def test_update_ai_provider(client):
     r = client.put("/api/settings", json={"ai_provider": "openai"})
     assert r.status_code == 200
     assert r.json()["ai_provider"] == "openai"
+
+
+def test_update_ai_base_url(client):
+    r = client.put("/api/settings", json={
+        "ai_provider": "openai_compatible",
+        "ai_base_url": "https://litellm.home/v1",
+    })
+    assert r.status_code == 200
+    assert r.json()["ai_base_url"] == "https://litellm.home/v1"
 
 
 def test_settings_persist_across_requests(client):

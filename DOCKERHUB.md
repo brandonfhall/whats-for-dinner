@@ -75,15 +75,16 @@ Then visit `http://your-server-ip:8000`.
 
 | Variable | Default | Description |
 |---|---|---|
-| `AI_PROVIDER` | `anthropic` | `anthropic`, `openai`, or `none` — overrides the Settings UI selector if set |
+| `AI_PROVIDER` | `anthropic` | `anthropic`, `openai`, `openai_compatible`, or `none` — overrides the Settings UI selector if set |
 | `AI_API_KEY` | — | API key for the configured provider — overrides the Settings UI value if set |
+| `AI_BASE_URL` | — | Endpoint URL for the `openai_compatible` provider (e.g. a self-hosted LiteLLM proxy) — overrides the Settings UI value if set |
 | `APP_PORT` | `8000` | Port inside the container |
 | `APP_HOSTNAME` | `dinner.home` | Hostname for Traefik routing |
 | `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
 | `ALLOWED_SUBNETS` | _(all)_ | Restrict access to specific CIDRs (e.g. `192.168.1.0/24`) |
 | `DEMO_MODE` | `false` | Seed ~20 sample meals and protein inventory on first startup |
 
-AI is fully optional. The provider and API key can be configured directly in the Settings tab without touching the server — the key is stored on the server and never returned by the API. Env vars `AI_PROVIDER` and `AI_API_KEY` take precedence over UI settings if set.
+AI is fully optional. The provider, API key, and (for `openai_compatible`) base URL can be configured directly in the Settings tab without touching the server — the key is stored on the server and never returned by the API. Env vars `AI_PROVIDER`, `AI_API_KEY`, and `AI_BASE_URL` take precedence over UI settings if set.
 
 ### Example `.env`
 

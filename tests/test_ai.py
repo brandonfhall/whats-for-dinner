@@ -94,6 +94,21 @@ def test_check_configured_with_key():
     assert reason is None
 
 
+def test_check_configured_openai_compatible_missing_base_url():
+    from app.routers.ai import _check_configured
+    configured, reason = _check_configured("openai_compatible", "sk-test", "")
+    assert configured is False
+    assert reason is not None
+    assert "AI_BASE_URL" in reason
+
+
+def test_check_configured_openai_compatible_with_base_url():
+    from app.routers.ai import _check_configured
+    configured, reason = _check_configured("openai_compatible", "sk-test", "https://litellm.home/v1")
+    assert configured is True
+    assert reason is None
+
+
 # ── Prompt construction ───────────────────────────────────────────────────────
 
 def test_build_prompt_contains_day_numbering_convention():
@@ -226,6 +241,40 @@ def test_generate_mocked_openai(client, meals, ai_env):
 
     assert r.status_code == 200
     assert len(r.json()["suggestions"]) == 7
+
+
+def test_generate_mocked_openai_compatible(client, meals):
+    """Full generate flow with a mocked self-hosted OpenAI-compatible response."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_openai_compatible", return_value=suggestions):
+        with patch.dict(os.environ, {
+            "AI_PROVIDER": "openai_compatible",
+            "AI_API_KEY": "sk-test",
+            "AI_BASE_URL": "https://litellm.home/v1",
+        }):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    assert len(r.json()["suggestions"]) == 7
+
+
+def test_generate_openai_compatible_missing_base_url_returns_503(client, meals):
+    """Without AI_BASE_URL, the openai_compatible provider is treated as not configured."""
+    plan = client.get("/api/plans/current").json()
+
+    with patch.dict(os.environ, {"AI_PROVIDER": "openai_compatible", "AI_API_KEY": "sk-test"}, clear=True):
+        r = client.post("/api/ai/generate", json={
+            "week_start": plan["week_start"],
+            "existing_plan_id": plan["id"],
+        })
+
+    assert r.status_code == 503
+    assert "AI_BASE_URL" in r.json()["detail"]
 
 
 def test_generate_ignores_hallucinated_meal_ids(client, meals, ai_env):
@@ -687,3 +736,24 @@ def test_ai_model_anthropic_env_override():
 
     call_kwargs = mock_instance.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+
+
+def test_call_openai_compatible_forwards_base_url_and_model():
+    """base_url is passed to the OpenAI client and AI_MODEL_OPENAI_COMPATIBLE is forwarded."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance) as mock_client:
+        with patch.dict(os.environ, {"AI_MODEL_OPENAI_COMPATIBLE": "local-llama"}):
+            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert result == [{"day_of_week": 0}]
+    mock_client.assert_called_once()
+    assert mock_client.call_args.kwargs["base_url"] == "https://litellm.home/v1"
+    assert mock_client.call_args.kwargs["api_key"] == "sk-test"
+    assert mock_instance.chat.completions.create.call_args.kwargs["model"] == "local-llama"
