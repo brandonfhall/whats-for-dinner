@@ -269,7 +269,8 @@ def test_generate_openai_compatible_empty_response_returns_500_with_clear_messag
     500 error, not the raw JSONDecodeError ("Expecting value: line 1 column 1")."""
     plan = client.get("/api/plans/current").json()
 
-    with patch("app.routers.ai._call_openai_compatible", side_effect=ValueError("Model returned an empty response. Try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE.")):
+    error = ValueError("Model returned an empty response. Try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE.")
+    with patch("app.routers.ai._call_openai_compatible", side_effect=error):
         with patch.dict(os.environ, {
             "AI_PROVIDER": "openai_compatible",
             "AI_API_KEY": "sk-test",
