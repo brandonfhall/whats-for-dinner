@@ -678,7 +678,7 @@ def test_ai_model_anthropic_env_override():
 
     mock_instance = MagicMock()
     mock_instance.messages.create.return_value = MagicMock(
-        content=[MagicMock(text='[{"day_of_week": 0}]')]
+        content=[MagicMock(type="text", text='[{"day_of_week": 0}]')]
     )
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
@@ -687,3 +687,60 @@ def test_ai_model_anthropic_env_override():
 
     call_kwargs = mock_instance.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+
+
+# ── Provider response parsing guards ─────────────────────────────────────────
+
+def test_call_anthropic_skips_leading_non_text_blocks():
+    """A thinking block ahead of the text block is skipped, not treated as the answer."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_anthropic
+
+    mock_instance = MagicMock()
+    mock_instance.messages.create.return_value = MagicMock(
+        content=[
+            MagicMock(type="thinking", text=None),
+            MagicMock(type="text", text='[{"day_of_week": 0}]'),
+        ]
+    )
+
+    with patch("anthropic.Anthropic", return_value=mock_instance):
+        result = _call_anthropic("test prompt", "sk-test")
+
+    assert result == [{"day_of_week": 0}]
+
+
+def test_call_anthropic_no_text_block_raises_value_error():
+    """A response with only non-text content blocks fails loudly instead of raising AttributeError."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_anthropic
+
+    mock_instance = MagicMock()
+    mock_instance.messages.create.return_value = MagicMock(
+        content=[MagicMock(type="thinking", text=None)]
+    )
+
+    with patch("anthropic.Anthropic", return_value=mock_instance):
+        try:
+            _call_anthropic("test prompt", "sk-test")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "no text content" in str(exc)
+
+
+def test_call_openai_none_content_raises_value_error():
+    """A response with content=None (e.g. filtered/refused) fails loudly instead of raising AttributeError."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=None))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        try:
+            _call_openai("test prompt", "sk-test")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "empty response" in str(exc)

@@ -239,7 +239,10 @@ def _call_anthropic(prompt: str, key: str) -> list[dict]:
         messages=[{"role": "user", "content": prompt}],
         system="You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
     )
-    raw = message.content[0].text.strip()
+    text_blocks = [block.text for block in message.content if getattr(block, "type", None) == "text"]
+    if not text_blocks:
+        raise ValueError("Anthropic response contained no text content")
+    raw = text_blocks[0].strip()
     return json.loads(raw)
 
 
@@ -259,7 +262,9 @@ def _call_openai(prompt: str, key: str) -> list[dict]:
         response_format={"type": "json_object"},
     )
     # gpt-4o json_object mode wraps in an object, handle both cases
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
+    if not raw:
+        raise ValueError("OpenAI returned an empty response")
     parsed = json.loads(raw)
     if isinstance(parsed, list):
         return parsed
