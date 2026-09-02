@@ -30,7 +30,7 @@ function app() {
     thisWeekStart: null,   // the actual current week's Sunday (for "Today" button)
     pastPlans: [],
     meals: [],
-    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic', ai_key_configured: false, custom_instructions: '' },
+    settings: { gym_days: [], eat_out_days: [], ai_provider: 'anthropic', ai_key_configured: false, ai_base_url: '', custom_instructions: '' },
 
     // ── Week notes ──────────────────────────────────────────
     weekNotes: '',
@@ -41,7 +41,7 @@ function app() {
     aiError: null,
     aiSuccess: false,
     aiConfigured: null,   // null = unknown, true = ready, false = not configured/disabled
-    aiProvider: null,     // "anthropic" | "openai" | "none" | null
+    aiProvider: null,     // "anthropic" | "openai" | "openai_compatible" | "none" | null
 
     // ── Settings UI ─────────────────────────────────────────
     settingsSaving: false,
@@ -703,6 +703,7 @@ function app() {
           gym_days: this.settings.gym_days,
           eat_out_days: this.settings.eat_out_days,
           ai_provider: this.settings.ai_provider,
+          ai_base_url: this.settings.ai_base_url,
           custom_instructions: this.settings.custom_instructions,
         });
         await this.loadAIStatus();

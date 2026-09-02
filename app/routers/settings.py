@@ -17,6 +17,7 @@ DEFAULTS = {
     "eat_out_days": [],
     "ai_provider": "anthropic",
     "ai_api_key": "",
+    "ai_base_url": "",
     "custom_instructions": "",
 }
 
