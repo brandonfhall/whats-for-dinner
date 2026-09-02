@@ -263,6 +263,27 @@ def test_generate_mocked_openai_compatible(client, meals):
     assert len(r.json()["suggestions"]) == 7
 
 
+def test_generate_openai_compatible_empty_response_returns_500_with_clear_message(client, meals):
+    """Reproduces the real failure: a reasoning model returns empty content because it
+    spent the whole max_tokens budget on hidden reasoning — should surface a clear
+    500 error, not the raw JSONDecodeError ("Expecting value: line 1 column 1")."""
+    plan = client.get("/api/plans/current").json()
+
+    with patch("app.routers.ai._call_openai_compatible", side_effect=ValueError("Model returned an empty response. Try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE.")):
+        with patch.dict(os.environ, {
+            "AI_PROVIDER": "openai_compatible",
+            "AI_API_KEY": "sk-test",
+            "AI_BASE_URL": "https://litellm.home/v1",
+        }):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 500
+    assert "AI_MAX_TOKENS_OPENAI_COMPATIBLE" in r.json()["detail"]
+
+
 def test_generate_openai_compatible_missing_base_url_returns_503(client, meals):
     """Without AI_BASE_URL, the openai_compatible provider is treated as not configured."""
     plan = client.get("/api/plans/current").json()
@@ -757,3 +778,76 @@ def test_call_openai_compatible_forwards_base_url_and_model():
     assert mock_client.call_args.kwargs["base_url"] == "https://litellm.home/v1"
     assert mock_client.call_args.kwargs["api_key"] == "sk-test"
     assert mock_instance.chat.completions.create.call_args.kwargs["model"] == "local-llama"
+
+
+def test_call_openai_compatible_default_max_tokens():
+    """Defaults to a higher max_tokens than the other providers, to leave room for
+    reasoning models that spend part of the budget on hidden reasoning tokens."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {}, clear=True):
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 4096
+
+
+def test_call_openai_compatible_max_tokens_env_override():
+    """AI_MAX_TOKENS_OPENAI_COMPATIBLE overrides the default max_tokens."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {"AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000"}):
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 8000
+
+
+def test_call_openai_compatible_empty_content_raises_clear_error():
+    """A reasoning model that burns its whole token budget on hidden reasoning returns
+    empty content — this should raise a clear, actionable error, not a bare JSON error."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=""))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        try:
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "empty response" in str(exc).lower()
+            assert "AI_MAX_TOKENS_OPENAI_COMPATIBLE" in str(exc)
+
+
+def test_call_openai_compatible_none_content_raises_clear_error():
+    """message.content can be None (not just empty string) — must not crash on .strip()."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=None))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        try:
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "empty response" in str(exc).lower()
