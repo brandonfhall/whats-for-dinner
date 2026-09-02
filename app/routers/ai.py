@@ -26,7 +26,12 @@ def _resolve_key(settings: dict) -> str:
     return os.getenv("AI_API_KEY") or settings.get("ai_api_key", "")
 
 
-def _check_configured(provider: str, key: str) -> tuple[bool, str | None]:
+def _resolve_base_url(settings: dict) -> str:
+    """Return the base URL for the openai_compatible provider: env var takes precedence."""
+    return os.getenv("AI_BASE_URL") or settings.get("ai_base_url", "")
+
+
+def _check_configured(provider: str, key: str, base_url: str = "") -> tuple[bool, str | None]:
     """Return (is_configured, reason_if_not).
     reason=None means intentionally disabled (provider='none'), not misconfigured.
     """
@@ -34,6 +39,8 @@ def _check_configured(provider: str, key: str) -> tuple[bool, str | None]:
         return False, None
     if not key:
         return False, "AI_API_KEY is not configured. Set it in Settings or your .env file."
+    if provider == "openai_compatible" and not base_url:
+        return False, "AI_BASE_URL is not configured. Set it in Settings or your .env file."
     return True, None
 
 
@@ -42,7 +49,8 @@ def ai_status(db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
     key = _resolve_key(settings)
-    configured, reason = _check_configured(provider, key)
+    base_url = _resolve_base_url(settings)
+    configured, reason = _check_configured(provider, key, base_url)
     return {"configured": configured, "provider": provider, "reason": reason}
 
 
@@ -171,6 +179,12 @@ def _build_prompt(
         '2. For eat-out nights, set day_type to "eat_out" and provide a custom_name'
         ' like "Pizza place" or "Mexican" — leave meal_id null.'
     )
+    instr_3 = (
+        '3. Gym nights are a HARD REQUIREMENT, not a preference: day_type MUST be "home_cooked" and meal_id MUST'
+        ' reference a meal where easy_to_make is true. EXCLUDE every meal where easy_to_make is false from'
+        ' consideration for these nights entirely — do not select one even if it otherwise fits the selection'
+        ' style better.'
+    )
     instr_9 = (
         "9. Do NOT repeat any existing day notes in your response — they are"
         " preserved automatically. Only add new information in the notes field."
@@ -184,7 +198,7 @@ RECENT HISTORY (last 8 weeks of dinners):
 {json.dumps(history, indent=2)}
 
 CONSTRAINTS FOR THIS WEEK:
-- Gym nights (prefer easy_to_make meals): {gym_strs if gym_strs else 'none'}
+- Gym nights (HARD REQUIREMENT — see instruction 3): {gym_strs if gym_strs else 'none'}
 - Eat-out nights (set day_type to eat_out, no meal_id needed): {eat_out_strs if eat_out_strs else 'none'}
 
 {mode_instruction}
@@ -192,7 +206,7 @@ CONSTRAINTS FOR THIS WEEK:
 INSTRUCTIONS:
 1. Suggest a dinner for all 7 nights (Sunday through Saturday, days 0-6).
 {instr_2}
-3. For gym nights, strongly prefer meals where easy_to_make is true. Set day_type to "home_cooked".
+{instr_3}
 4. For all other nights, pick from the meal library applying the selection style above.
 5. Try to vary the protein across the week — avoid scheduling the same protein on back-to-back nights when alternatives exist.
 6. Try to vary the cuisine across the week — avoid back-to-back nights with the same cuisine when alternatives exist.
@@ -275,6 +289,56 @@ def _call_openai(prompt: str, key: str) -> list[dict]:
     raise ValueError("Unexpected OpenAI response shape")
 
 
+def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
+    """Call a self-hosted OpenAI-compatible endpoint (LiteLLM, Ollama, vLLM, etc.).
+
+    response_format={"type": "json_object"} isn't guaranteed to be honoured by every
+    model behind an OpenAI-compatible proxy, so the JSON-array-or-wrapped-object
+    fallback below matters more here than for OpenAI itself. max_tokens defaults
+    higher than the other providers because reasoning models (e.g. GLM, DeepSeek)
+    spend an unpredictable chunk of the budget on hidden reasoning tokens before
+    writing the visible answer — too low a cap returns empty content, not an error.
+    AI_ALLOW_REASONING_OPENAI_COMPATIBLE drops the cap entirely (no max_tokens sent)
+    for models/proxies where per-request reasoning effort can't be controlled another
+    way — there's no upper bound at that point, so a slow or looping model runs until
+    AI_TIMEOUT instead of failing fast.
+    """
+    timeout = float(os.getenv("AI_TIMEOUT", "60"))
+    allow_reasoning = os.getenv("AI_ALLOW_REASONING_OPENAI_COMPATIBLE", "").lower() in ("true", "1", "yes")
+    max_tokens = int(os.getenv("AI_MAX_TOKENS_OPENAI_COMPATIBLE", "4096"))
+    client = OpenAI(api_key=key, base_url=base_url, timeout=timeout)
+    kwargs = {
+        "model": os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    }
+    if not allow_reasoning:
+        kwargs["max_tokens"] = max_tokens
+    response = client.chat.completions.create(**kwargs)
+    raw = (response.choices[0].message.content or "").strip()
+    if not raw:
+        if allow_reasoning:
+            raise ValueError("Model returned an empty response even with AI_ALLOW_REASONING_OPENAI_COMPATIBLE set.")
+        raise ValueError(
+            "Model returned an empty response. If it's a reasoning model, it likely spent "
+            f"the full max_tokens ({max_tokens}) budget on hidden reasoning before writing "
+            "an answer — try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE, or set "
+            "AI_ALLOW_REASONING_OPENAI_COMPATIBLE=true to remove the cap entirely."
+        )
+    parsed = json.loads(raw)
+    if isinstance(parsed, list):
+        return parsed
+    for v in parsed.values():
+        if isinstance(v, list):
+            return v
+    raise ValueError("Unexpected response shape")
+
+
 def _apply_suggestions(
     plan_id: int,
     suggestions: list[dict],
@@ -329,6 +393,75 @@ def _apply_suggestions(
     return result
 
 
+def _enforce_gym_nights(
+    plan_id: int,
+    gym_days: list[int],
+    db: Session,
+    suggestions: list[AIDaySuggestion],
+) -> None:
+    """Backstop for gym-night compliance. The prompt tells the model this is a hard
+    requirement, but nothing guarantees it listens — for any gym day that didn't land on
+    an easy_to_make home-cooked meal, force-swap it to one and flag the correction in the
+    day's notes so it's visible, not silent.
+
+    Days with carry_forward=True are skipped: that flag is an explicit per-day choice the
+    user made in the day editor, so it's treated as an intentional override rather than
+    something this backstop should silently clobber.
+    """
+    if not gym_days:
+        return
+
+    suggestions_by_day = {s.day_of_week: s for s in suggestions}
+    days = (
+        db.query(PlanDay)
+        .options(joinedload(PlanDay.meal))
+        .filter(PlanDay.plan_id == plan_id, PlanDay.day_of_week.in_(gym_days))
+        .all()
+    )
+    for day in days:
+        if day.carry_forward:
+            continue
+
+        compliant = (
+            day.day_type == DayType.home_cooked
+            and day.meal is not None
+            and day.meal.easy_to_make
+        )
+        if compliant:
+            continue
+
+        fallback = (
+            db.query(Meal)
+            .filter(Meal.active == True, Meal.easy_to_make == True)  # noqa: E712
+            .order_by(func.random())
+            .first()
+        )
+        if not fallback:
+            logger.warning(
+                "Gym night non-compliant and no easy_to_make meal available to auto-correct | day=%s",
+                day.day_of_week,
+            )
+            continue
+
+        logger.warning(
+            "Gym night non-compliant — auto-corrected | day=%s meal=%s (was day_type=%s meal_id=%s)",
+            day.day_of_week, fallback.name,
+            day.day_type.value if day.day_type else None, day.meal_id,
+        )
+        day.day_type = DayType.home_cooked
+        day.meal_id = fallback.id
+        note = "Auto-adjusted: gym night requires an easy-to-make meal"
+        existing_notes = day.notes.strip() if day.notes else ""
+        day.notes = f"{existing_notes}\n{note}" if existing_notes else note
+
+        suggestion = suggestions_by_day.get(day.day_of_week)
+        if suggestion:
+            suggestion.day_type = DayType.home_cooked
+            suggestion.meal_id = fallback.id
+            suggestion.meal_name = fallback.name
+            suggestion.notes = day.notes
+
+
 def _resolve_plan(payload: AIGenerateRequest, week_start: date, settings: dict, db: Session) -> WeeklyPlan:
     """Return the plan to populate: use existing_plan_id if given, else find or create by week."""
     if payload.existing_plan_id:
@@ -353,6 +486,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     settings = get_all_settings(db)
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
     key = _resolve_key(settings)
+    base_url = _resolve_base_url(settings)
 
     library = _get_meal_library(db)
     if not library:
@@ -372,7 +506,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         current_week_context=week_context,
     )
 
-    configured, reason = _check_configured(provider, key)
+    configured, reason = _check_configured(provider, key, base_url)
     if not configured:
         if reason is None:
             raise HTTPException(status_code=503, detail="AI is disabled (AI_PROVIDER=none).")
@@ -386,6 +520,8 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     try:
         if provider == "openai":
             raw_suggestions = _call_openai(prompt, key)
+        elif provider == "openai_compatible":
+            raw_suggestions = _call_openai_compatible(prompt, key, base_url)
         else:
             raw_suggestions = _call_anthropic(prompt, key)
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
@@ -403,6 +539,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     plan.ai_generated = True
     valid_meal_ids = {m["id"] for m in library}
     suggestions = _apply_suggestions(plan.id, raw_suggestions, db, valid_meal_ids)
+    _enforce_gym_nights(plan.id, settings["gym_days"], db, suggestions)
     db.commit()
 
     return AIGenerateResponse(suggestions=suggestions, plan_id=plan.id)

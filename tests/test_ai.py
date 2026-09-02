@@ -94,6 +94,21 @@ def test_check_configured_with_key():
     assert reason is None
 
 
+def test_check_configured_openai_compatible_missing_base_url():
+    from app.routers.ai import _check_configured
+    configured, reason = _check_configured("openai_compatible", "sk-test", "")
+    assert configured is False
+    assert reason is not None
+    assert "AI_BASE_URL" in reason
+
+
+def test_check_configured_openai_compatible_with_base_url():
+    from app.routers.ai import _check_configured
+    configured, reason = _check_configured("openai_compatible", "sk-test", "https://litellm.home/v1")
+    assert configured is True
+    assert reason is None
+
+
 # ── Prompt construction ───────────────────────────────────────────────────────
 
 def test_build_prompt_contains_day_numbering_convention():
@@ -119,6 +134,21 @@ def test_build_prompt_gym_days_include_day_numbers():
     )
     assert "Monday (day_of_week=1)" in prompt
     assert "Wednesday (day_of_week=3)" in prompt
+
+
+def test_build_prompt_gym_days_are_a_hard_requirement():
+    """Gym-night wording must be a hard MUST/EXCLUDE constraint, not a soft preference —
+    a model that only sees 'prefer' text was observed ignoring it in practice."""
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[1],
+        eat_out_days=[],
+    )
+    assert "HARD REQUIREMENT" in prompt
+    assert "MUST" in prompt
+    assert "EXCLUDE" in prompt
 
 
 def test_build_prompt_eat_out_days_include_day_numbers():
@@ -226,6 +256,171 @@ def test_generate_mocked_openai(client, meals, ai_env):
 
     assert r.status_code == 200
     assert len(r.json()["suggestions"]) == 7
+
+
+def test_generate_mocked_openai_compatible(client, meals):
+    """Full generate flow with a mocked self-hosted OpenAI-compatible response."""
+    plan = client.get("/api/plans/current").json()
+    suggestions = _mock_suggestions(meals)
+
+    with patch("app.routers.ai._call_openai_compatible", return_value=suggestions):
+        with patch.dict(os.environ, {
+            "AI_PROVIDER": "openai_compatible",
+            "AI_API_KEY": "sk-test",
+            "AI_BASE_URL": "https://litellm.home/v1",
+        }):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    assert len(r.json()["suggestions"]) == 7
+
+
+def test_generate_openai_compatible_empty_response_returns_500_with_clear_message(client, meals):
+    """Reproduces the real failure: a reasoning model returns empty content because it
+    spent the whole max_tokens budget on hidden reasoning — should surface a clear
+    500 error, not the raw JSONDecodeError ("Expecting value: line 1 column 1")."""
+    plan = client.get("/api/plans/current").json()
+
+    error = ValueError("Model returned an empty response. Try raising AI_MAX_TOKENS_OPENAI_COMPATIBLE.")
+    with patch("app.routers.ai._call_openai_compatible", side_effect=error):
+        with patch.dict(os.environ, {
+            "AI_PROVIDER": "openai_compatible",
+            "AI_API_KEY": "sk-test",
+            "AI_BASE_URL": "https://litellm.home/v1",
+        }):
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 500
+    assert "AI_MAX_TOKENS_OPENAI_COMPATIBLE" in r.json()["detail"]
+
+
+def test_generate_openai_compatible_missing_base_url_returns_503(client, meals):
+    """Without AI_BASE_URL, the openai_compatible provider is treated as not configured."""
+    plan = client.get("/api/plans/current").json()
+
+    with patch.dict(os.environ, {"AI_PROVIDER": "openai_compatible", "AI_API_KEY": "sk-test"}, clear=True):
+        r = client.post("/api/ai/generate", json={
+            "week_start": plan["week_start"],
+            "existing_plan_id": plan["id"],
+        })
+
+    assert r.status_code == 503
+    assert "AI_BASE_URL" in r.json()["detail"]
+
+
+def test_generate_corrects_gym_night_noncompliant_meal(client, meals, ai_env):
+    """A gym night the AI assigned a non-easy_to_make meal gets force-corrected."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = _mock_suggestions(meals)
+    salmon = meals[4]  # Salmon Bowl — easy_to_make=False
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "home_cooked", "meal_id": salmon["id"],
+        "meal_name": salmon["name"], "custom_name": "", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "home_cooked"
+    assert monday["meal_id"] != salmon["id"]
+    assert "Auto-adjusted" in monday["notes"]
+
+
+def test_generate_corrects_gym_night_set_to_eat_out(client, meals, ai_env):
+    """A gym night the AI sent out to eat gets force-corrected to home-cooked."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = _mock_suggestions(meals)
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "eat_out", "meal_id": None,
+        "meal_name": "", "custom_name": "Chipotle", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "home_cooked"
+    assert monday["meal_id"] is not None
+    assert "Auto-adjusted" in monday["notes"]
+
+
+def test_generate_respects_carry_forward_on_gym_night(client, meals, ai_env):
+    """A day explicitly marked carry_forward is left alone even if it's a non-compliant
+    gym night — that flag represents a deliberate per-day user choice, not something the
+    gym-night backstop should silently override."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    client.put(f"/api/plans/{plan['id']}/days/1", json={
+        "day_type": "eat_out", "custom_name": "Chipotle", "carry_forward": True,
+    })
+
+    suggestions = _mock_suggestions(meals)
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "eat_out", "meal_id": None,
+        "meal_name": "", "custom_name": "Chipotle", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "eat_out"
+    assert monday["custom_name"] == "Chipotle"
+    assert "Auto-adjusted" not in monday["notes"]
+
+
+def test_generate_gym_night_no_easy_meal_available_leaves_uncorrected(client, create_meal_factory, ai_env):
+    """If the library has no easy_to_make meal at all, the backstop can't fix a
+    non-compliant gym night — it should leave it alone rather than crash."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    hard_meal = create_meal_factory("Slow Braised Short Ribs", easy_to_make=False)
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = [
+        {
+            "day_of_week": i, "day_type": "home_cooked", "meal_id": hard_meal["id"],
+            "meal_name": hard_meal["name"], "custom_name": "", "notes": "",
+        }
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["meal_id"] == hard_meal["id"]
 
 
 def test_generate_ignores_hallucinated_meal_ids(client, meals, ai_env):
@@ -744,3 +939,139 @@ def test_call_openai_none_content_raises_value_error():
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "empty response" in str(exc)
+
+
+def test_call_openai_compatible_forwards_base_url_and_model():
+    """base_url is passed to the OpenAI client and AI_MODEL_OPENAI_COMPATIBLE is forwarded."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance) as mock_client:
+        with patch.dict(os.environ, {"AI_MODEL_OPENAI_COMPATIBLE": "local-llama"}):
+            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert result == [{"day_of_week": 0}]
+    mock_client.assert_called_once()
+    assert mock_client.call_args.kwargs["base_url"] == "https://litellm.home/v1"
+    assert mock_client.call_args.kwargs["api_key"] == "sk-test"
+    assert mock_instance.chat.completions.create.call_args.kwargs["model"] == "local-llama"
+
+
+def test_call_openai_compatible_default_max_tokens():
+    """Defaults to a higher max_tokens than the other providers, to leave room for
+    reasoning models that spend part of the budget on hidden reasoning tokens."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {}, clear=True):
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 4096
+
+
+def test_call_openai_compatible_max_tokens_env_override():
+    """AI_MAX_TOKENS_OPENAI_COMPATIBLE overrides the default max_tokens."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {"AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000"}):
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 8000
+
+
+def test_call_openai_compatible_empty_content_raises_clear_error():
+    """A reasoning model that burns its whole token budget on hidden reasoning returns
+    empty content — this should raise a clear, actionable error, not a bare JSON error."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=""))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        try:
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "empty response" in str(exc).lower()
+            assert "AI_MAX_TOKENS_OPENAI_COMPATIBLE" in str(exc)
+
+
+def test_call_openai_compatible_none_content_raises_clear_error():
+    """message.content can be None (not just empty string) — must not crash on .strip()."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=None))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        try:
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "empty response" in str(exc).lower()
+
+
+def test_call_openai_compatible_allow_reasoning_drops_max_tokens():
+    """AI_ALLOW_REASONING_OPENAI_COMPATIBLE=true omits max_tokens from the request entirely,
+    even if AI_MAX_TOKENS_OPENAI_COMPATIBLE is also set — reasoning takes precedence."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='[{"day_of_week": 0}]'))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {
+            "AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true",
+            "AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000",
+        }):
+            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+
+    assert result == [{"day_of_week": 0}]
+    assert "max_tokens" not in mock_instance.chat.completions.create.call_args.kwargs
+
+
+def test_call_openai_compatible_allow_reasoning_empty_content_still_raises():
+    """Even with the cap removed, an empty response should still raise a clear error,
+    not crash — the message just shouldn't blame max_tokens this time."""
+    from unittest.mock import MagicMock
+    from app.routers.ai import _call_openai_compatible
+
+    mock_instance = MagicMock()
+    mock_instance.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content=""))]
+    )
+
+    with patch("app.routers.ai.OpenAI", return_value=mock_instance):
+        with patch.dict(os.environ, {"AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true"}):
+            try:
+                _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+                assert False, "expected ValueError"
+            except ValueError as exc:
+                assert "empty response" in str(exc).lower()
