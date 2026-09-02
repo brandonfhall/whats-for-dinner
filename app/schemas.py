@@ -127,6 +127,7 @@ class SettingsOut(BaseModel):
     eat_out_days: list[int] = []
     ai_provider: str = "anthropic"
     ai_key_configured: bool = False   # True when a key is available (env or DB)
+    ai_base_url: str = ""             # only used when ai_provider="openai_compatible"
     custom_instructions: str = ""
 
 
@@ -135,6 +136,7 @@ class SettingsUpdate(BaseModel):
     eat_out_days: Optional[list[int]] = None
     ai_provider: Optional[str] = None
     ai_api_key: Optional[str] = None  # write-only; never returned in SettingsOut
+    ai_base_url: Optional[str] = None
     custom_instructions: Optional[str] = None
 
 
