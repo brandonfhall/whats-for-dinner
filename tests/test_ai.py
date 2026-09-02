@@ -136,6 +136,21 @@ def test_build_prompt_gym_days_include_day_numbers():
     assert "Wednesday (day_of_week=3)" in prompt
 
 
+def test_build_prompt_gym_days_are_a_hard_requirement():
+    """Gym-night wording must be a hard MUST/EXCLUDE constraint, not a soft preference —
+    a model that only sees 'prefer' text was observed ignoring it in practice."""
+    prompt = _build_prompt(
+        week_start=date(2026, 3, 8),
+        library=[],
+        history=[],
+        gym_days=[1],
+        eat_out_days=[],
+    )
+    assert "HARD REQUIREMENT" in prompt
+    assert "MUST" in prompt
+    assert "EXCLUDE" in prompt
+
+
 def test_build_prompt_eat_out_days_include_day_numbers():
     prompt = _build_prompt(
         week_start=date(2026, 3, 8),
@@ -297,6 +312,115 @@ def test_generate_openai_compatible_missing_base_url_returns_503(client, meals):
 
     assert r.status_code == 503
     assert "AI_BASE_URL" in r.json()["detail"]
+
+
+def test_generate_corrects_gym_night_noncompliant_meal(client, meals, ai_env):
+    """A gym night the AI assigned a non-easy_to_make meal gets force-corrected."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = _mock_suggestions(meals)
+    salmon = meals[4]  # Salmon Bowl — easy_to_make=False
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "home_cooked", "meal_id": salmon["id"],
+        "meal_name": salmon["name"], "custom_name": "", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "home_cooked"
+    assert monday["meal_id"] != salmon["id"]
+    assert "Auto-adjusted" in monday["notes"]
+
+
+def test_generate_corrects_gym_night_set_to_eat_out(client, meals, ai_env):
+    """A gym night the AI sent out to eat gets force-corrected to home-cooked."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = _mock_suggestions(meals)
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "eat_out", "meal_id": None,
+        "meal_name": "", "custom_name": "Chipotle", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "home_cooked"
+    assert monday["meal_id"] is not None
+    assert "Auto-adjusted" in monday["notes"]
+
+
+def test_generate_respects_carry_forward_on_gym_night(client, meals, ai_env):
+    """A day explicitly marked carry_forward is left alone even if it's a non-compliant
+    gym night — that flag represents a deliberate per-day user choice, not something the
+    gym-night backstop should silently override."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    plan = client.get("/api/plans/current").json()
+
+    client.put(f"/api/plans/{plan['id']}/days/1", json={
+        "day_type": "eat_out", "custom_name": "Chipotle", "carry_forward": True,
+    })
+
+    suggestions = _mock_suggestions(meals)
+    suggestions[1] = {
+        "day_of_week": 1, "day_type": "eat_out", "meal_id": None,
+        "meal_name": "", "custom_name": "Chipotle", "notes": "",
+    }
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["day_type"] == "eat_out"
+    assert monday["custom_name"] == "Chipotle"
+    assert "Auto-adjusted" not in monday["notes"]
+
+
+def test_generate_gym_night_no_easy_meal_available_leaves_uncorrected(client, create_meal_factory, ai_env):
+    """If the library has no easy_to_make meal at all, the backstop can't fix a
+    non-compliant gym night — it should leave it alone rather than crash."""
+    client.put("/api/settings", json={"gym_days": [1]})
+    hard_meal = create_meal_factory("Slow Braised Short Ribs", easy_to_make=False)
+    plan = client.get("/api/plans/current").json()
+
+    suggestions = [
+        {
+            "day_of_week": i, "day_type": "home_cooked", "meal_id": hard_meal["id"],
+            "meal_name": hard_meal["name"], "custom_name": "", "notes": "",
+        }
+        for i in range(7)
+    ]
+
+    with patch("app.routers.ai._call_anthropic", return_value=suggestions):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={
+                "week_start": plan["week_start"],
+                "existing_plan_id": plan["id"],
+            })
+
+    assert r.status_code == 200
+    monday = next(s for s in r.json()["suggestions"] if s["day_of_week"] == 1)
+    assert monday["meal_id"] == hard_meal["id"]
 
 
 def test_generate_ignores_hallucinated_meal_ids(client, meals, ai_env):
