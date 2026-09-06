@@ -117,7 +117,7 @@ Household meal planning web application for two people. Single-container Docker 
 ### settings
 | Column | Type | Notes                                    |
 |--------|------|------------------------------------------|
-| key    | TEXT | PK (gym_days, eat_out_days, ai_provider, ai_api_key, ai_base_url, custom_instructions) |
+| key    | TEXT | PK (gym_days, eat_out_days, ai_provider, ai_api_key, ai_base_url, ai_model_anthropic, ai_model_openai, ai_model_openai_compatible, custom_instructions) |
 | value  | TEXT | JSON-encoded                             |
 
 ## API Endpoints
@@ -190,7 +190,7 @@ Household meal planning web application for two people. Single-container Docker 
    - Gym nights are a hard requirement (MUST/EXCLUDE wording in the prompt) backed by `_enforce_gym_nights`: any gym day that isn't `home_cooked` with an `easy_to_make` meal is force-swapped to a random `easy_to_make` meal with an "Auto-adjusted" note. `carry_forward=True` days are exempt. A day is left uncorrected (with a logged warning) if the library has no `easy_to_make` meal.
 6. **Shopping List**: Read-only list comparing plan needs vs inventory (protein stock + frozen meal count)
 7. **Month View**: Calendar overview, click to navigate to any week
-8. **Settings**: Gym days, eat-out days, AI provider selector (anthropic/openai/openai_compatible/none; env var `AI_PROVIDER` takes precedence), AI API key (write-only — stored in DB, never returned by the API; env var `AI_API_KEY` takes precedence), AI base URL (used by the openai_compatible provider; env var `AI_BASE_URL` takes precedence), custom AI instructions
+8. **Settings**: Gym days, eat-out days, AI provider selector (anthropic/openai/openai_compatible/none; env var `AI_PROVIDER` takes precedence), AI API key (write-only — stored in DB, never returned by the API; env var `AI_API_KEY` takes precedence), AI base URL (used by the openai_compatible provider; env var `AI_BASE_URL` takes precedence), per-provider AI model override (one key per provider, blank means the built-in default; env vars `AI_MODEL_ANTHROPIC` / `AI_MODEL_OPENAI` / `AI_MODEL_OPENAI_COMPATIBLE` take precedence), custom AI instructions
 9. **Demo Mode**: `DEMO_MODE=true` env var seeds ~20 sample meals (varied types, proteins, cuisines) and protein inventory quantities on first startup; skips if meals already exist
 
 ## Frontend Structure

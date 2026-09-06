@@ -217,3 +217,17 @@ def test_input_css_safelists_dynamic_classes():
     ]
     missing = [cls for cls in required if cls not in config]
     assert not missing, f"Missing @source inline entries in static/css/input.css: {missing}"
+
+
+def test_settings_model_inputs_bound_and_saved():
+    """Each provider's model input must be x-model bound and included in the PUT payload.
+
+    A field bound in the HTML but missing from saveSettings() silently discards
+    whatever the user typed.
+    """
+    html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    for field in ("ai_model_anthropic", "ai_model_openai", "ai_model_openai_compatible"):
+        assert f'x-model="settings.{field}"' in html, f"{field} input missing from index.html"
+        assert f"{field}: this.settings.{field}," in js, f"{field} missing from saveSettings() payload"
+        assert f"{field}: ''" in js, f"{field} missing from the settings initializer"
