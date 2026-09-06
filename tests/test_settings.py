@@ -131,6 +131,45 @@ def test_custom_instructions_update_leaves_other_fields_unchanged(client):
     assert data["gym_days"] == [1]
 
 
+# ── AI model overrides ───────────────────────────────────────────────────────
+
+def test_get_settings_returns_empty_model_overrides(client):
+    """All three model fields default to blank, meaning \"use the built-in default\"."""
+    data = client.get("/api/settings").json()
+    assert data["ai_model_anthropic"] == ""
+    assert data["ai_model_openai"] == ""
+    assert data["ai_model_openai_compatible"] == ""
+
+
+def test_update_model_overrides_round_trip(client):
+    r = client.put("/api/settings", json={
+        "ai_model_anthropic": "claude-opus-4-6",
+        "ai_model_openai": "gpt-5",
+        "ai_model_openai_compatible": "local-llama",
+    })
+    assert r.status_code == 200
+    data = client.get("/api/settings").json()
+    assert data["ai_model_anthropic"] == "claude-opus-4-6"
+    assert data["ai_model_openai"] == "gpt-5"
+    assert data["ai_model_openai_compatible"] == "local-llama"
+
+
+def test_model_overrides_are_per_provider(client):
+    """Setting one provider's model leaves the others alone — switching provider
+    must not send a model name the new provider doesn't recognise."""
+    client.put("/api/settings", json={"ai_model_anthropic": "claude-opus-4-6"})
+    data = client.get("/api/settings").json()
+    assert data["ai_model_openai"] == ""
+    assert data["ai_model_openai_compatible"] == ""
+
+
+def test_model_override_can_be_cleared(client):
+    """Clearing the field stores "" so resolution falls back to the built-in default."""
+    client.put("/api/settings", json={"ai_model_anthropic": "claude-opus-4-6"})
+    client.put("/api/settings", json={"ai_model_anthropic": ""})
+    assert client.get("/api/settings").json()["ai_model_anthropic"] == ""
+
+
 # ── Resilience ───────────────────────────────────────────────────────────────
 
 def test_corrupt_settings_json_returns_defaults(client_with_db):

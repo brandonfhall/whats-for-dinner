@@ -18,6 +18,9 @@ DEFAULTS = {
     "ai_provider": "anthropic",
     "ai_api_key": "",
     "ai_base_url": "",
+    "ai_model_anthropic": "",
+    "ai_model_openai": "",
+    "ai_model_openai_compatible": "",
     "custom_instructions": "",
 }
 
