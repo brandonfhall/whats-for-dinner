@@ -31,6 +31,36 @@ def _resolve_base_url(settings: dict) -> str:
     return os.getenv("AI_BASE_URL") or settings.get("ai_base_url", "")
 
 
+# Built-in model per provider, and the env var that overrides it. Both are keyed by
+# provider name so the DB setting key ("ai_model_<provider>") lines up with them.
+DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o",
+    "openai_compatible": "gpt-4o",
+}
+
+MODEL_ENV_VARS = {
+    "anthropic": "AI_MODEL_ANTHROPIC",
+    "openai": "AI_MODEL_OPENAI",
+    "openai_compatible": "AI_MODEL_OPENAI_COMPATIBLE",
+}
+
+
+def _resolve_model(settings: dict, provider: str) -> str:
+    """Return the model for a provider: env var wins, then the DB setting, then the default.
+
+    Empty strings fall through rather than short-circuiting — the DB row exists and holds
+    "" once the user saves the settings form with the model field left blank.
+    """
+    return (
+        os.getenv(MODEL_ENV_VARS.get(provider, ""), "")
+        or settings.get(f"ai_model_{provider}", "")
+        # unrecognised providers fall through to _call_anthropic in generate_plan,
+        # so their default model has to match
+        or DEFAULT_MODELS.get(provider, DEFAULT_MODELS["anthropic"])
+    )
+
+
 def _check_configured(provider: str, key: str, base_url: str = "") -> tuple[bool, str | None]:
     """Return (is_configured, reason_if_not).
     reason=None means intentionally disabled (provider='none'), not misconfigured.
@@ -244,11 +274,11 @@ Respond with ONLY a valid JSON array (no markdown, no explanation) with exactly 
     return prompt
 
 
-def _call_anthropic(prompt: str, key: str) -> list[dict]:
+def _call_anthropic(prompt: str, key: str, model: str) -> list[dict]:
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
     client = anthropic.Anthropic(api_key=key, timeout=timeout)
     message = client.messages.create(
-        model=os.getenv("AI_MODEL_ANTHROPIC", "claude-sonnet-4-6"),
+        model=model,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
         system="You are a helpful meal planner. Respond with valid JSON only — no markdown fences, no extra text.",
@@ -260,11 +290,11 @@ def _call_anthropic(prompt: str, key: str) -> list[dict]:
     return json.loads(raw)
 
 
-def _call_openai(prompt: str, key: str) -> list[dict]:
+def _call_openai(prompt: str, key: str, model: str) -> list[dict]:
     timeout = float(os.getenv("AI_TIMEOUT", "60"))
     client = OpenAI(api_key=key, timeout=timeout)
     response = client.chat.completions.create(
-        model=os.getenv("AI_MODEL_OPENAI", "gpt-4o"),
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -289,7 +319,7 @@ def _call_openai(prompt: str, key: str) -> list[dict]:
     raise ValueError("Unexpected OpenAI response shape")
 
 
-def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
+def _call_openai_compatible(prompt: str, key: str, base_url: str, model: str) -> list[dict]:
     """Call a self-hosted OpenAI-compatible endpoint (LiteLLM, Ollama, vLLM, etc.).
 
     response_format={"type": "json_object"} isn't guaranteed to be honoured by every
@@ -308,7 +338,7 @@ def _call_openai_compatible(prompt: str, key: str, base_url: str) -> list[dict]:
     max_tokens = int(os.getenv("AI_MAX_TOKENS_OPENAI_COMPATIBLE", "4096"))
     client = OpenAI(api_key=key, base_url=base_url, timeout=timeout)
     kwargs = {
-        "model": os.getenv("AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
+        "model": model,
         "messages": [
             {
                 "role": "system",
@@ -487,6 +517,7 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
     provider = os.getenv("AI_PROVIDER", settings.get("ai_provider", "anthropic"))
     key = _resolve_key(settings)
     base_url = _resolve_base_url(settings)
+    model = _resolve_model(settings, provider)
 
     library = _get_meal_library(db)
     if not library:
@@ -513,17 +544,17 @@ def generate_plan(payload: AIGenerateRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail=reason)
 
     logger.info(
-        "AI generate | provider=%s mode=%s week=%s meals=%d",
-        provider, payload.mode, payload.week_start, len(library),
+        "AI generate | provider=%s model=%s mode=%s week=%s meals=%d",
+        provider, model, payload.mode, payload.week_start, len(library),
     )
     t0 = time.perf_counter()
     try:
         if provider == "openai":
-            raw_suggestions = _call_openai(prompt, key)
+            raw_suggestions = _call_openai(prompt, key, model)
         elif provider == "openai_compatible":
-            raw_suggestions = _call_openai_compatible(prompt, key, base_url)
+            raw_suggestions = _call_openai_compatible(prompt, key, base_url, model)
         else:
-            raw_suggestions = _call_anthropic(prompt, key)
+            raw_suggestions = _call_anthropic(prompt, key, model)
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.error("AI generate failed | provider=%s error=%s", provider, exc)
         raise HTTPException(status_code=500, detail=f"AI request failed: {exc}") from exc

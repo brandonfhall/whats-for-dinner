@@ -963,6 +963,38 @@
             >
           </div>
 
+          <!-- AI model (per provider) -->
+          <div class="wfd-settings-row" x-show="settings.ai_provider !== 'none'">
+            <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">AI model</p>
+            <div x-show="(settings.ai_provider || 'anthropic') === 'anthropic'">
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Leave blank to use the default. Env var <code style="background:var(--surface-2);padding:1px 5px;border-radius:4px;">AI_MODEL_ANTHROPIC</code> takes precedence if set.</p>
+              <input
+                type="text"
+                x-model="settings.ai_model_anthropic"
+                placeholder="claude-sonnet-4-6"
+                class="wfd-input"
+              >
+            </div>
+            <div x-show="settings.ai_provider === 'openai'">
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Leave blank to use the default. Env var <code style="background:var(--surface-2);padding:1px 5px;border-radius:4px;">AI_MODEL_OPENAI</code> takes precedence if set.</p>
+              <input
+                type="text"
+                x-model="settings.ai_model_openai"
+                placeholder="gpt-4o"
+                class="wfd-input"
+              >
+            </div>
+            <div x-show="settings.ai_provider === 'openai_compatible'">
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Whatever model name your endpoint expects. Leave blank to use the default. Env var <code style="background:var(--surface-2);padding:1px 5px;border-radius:4px;">AI_MODEL_OPENAI_COMPATIBLE</code> takes precedence if set.</p>
+              <input
+                type="text"
+                x-model="settings.ai_model_openai_compatible"
+                placeholder="gpt-4o"
+                class="wfd-input"
+              >
+            </div>
+          </div>
+
           <!-- AI API key -->
           <div class="wfd-settings-row">
             <p style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;">AI API key</p>

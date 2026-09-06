@@ -3,9 +3,12 @@
 Real API calls are never made — _call_anthropic / _call_openai are mocked.
 """
 
+import json
 import os
 from datetime import date
 from unittest.mock import patch
+
+import pytest
 
 from app.routers.ai import _build_prompt
 
@@ -869,7 +872,7 @@ def test_generate_with_history_and_week_notes(client, meals, ai_env):
 def test_ai_model_anthropic_env_override():
     """AI_MODEL_ANTHROPIC env var is forwarded to the Anthropic messages.create call."""
     from unittest.mock import MagicMock
-    from app.routers.ai import _call_anthropic
+    from app.routers.ai import _call_anthropic, _resolve_model
 
     mock_instance = MagicMock()
     mock_instance.messages.create.return_value = MagicMock(
@@ -878,10 +881,62 @@ def test_ai_model_anthropic_env_override():
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
         with patch.dict(os.environ, {"AI_MODEL_ANTHROPIC": "claude-opus-4-6"}):
-            _call_anthropic("test prompt", "sk-test")
+            _call_anthropic("test prompt", "sk-test", _resolve_model({}, "anthropic"))
 
     call_kwargs = mock_instance.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+
+
+# ── Model resolution (env var > DB setting > built-in default) ────────────────
+
+@pytest.mark.parametrize("provider,env_var,default", [
+    ("anthropic", "AI_MODEL_ANTHROPIC", "claude-sonnet-4-6"),
+    ("openai", "AI_MODEL_OPENAI", "gpt-4o"),
+    ("openai_compatible", "AI_MODEL_OPENAI_COMPATIBLE", "gpt-4o"),
+])
+def test_resolve_model_precedence(provider, env_var, default):
+    """Env var beats the DB setting, which beats the built-in default."""
+    from app.routers.ai import _resolve_model
+
+    db_setting = {f"ai_model_{provider}": "from-db"}
+
+    with patch.dict(os.environ, {env_var: "from-env"}):
+        assert _resolve_model(db_setting, provider) == "from-env"
+        assert _resolve_model({}, provider) == "from-env"
+
+    with patch.dict(os.environ, {}, clear=True):
+        assert _resolve_model(db_setting, provider) == "from-db"
+        assert _resolve_model({}, provider) == default
+        # a saved-then-cleared field stores "", which must fall through to the default
+        assert _resolve_model({f"ai_model_{provider}": ""}, provider) == default
+
+
+def test_resolve_model_unknown_provider_falls_back_to_anthropic_default():
+    """generate_plan dispatches unrecognised providers to Anthropic, so the model matches."""
+    from app.routers.ai import _resolve_model
+
+    with patch.dict(os.environ, {}, clear=True):
+        assert _resolve_model({}, "not-a-provider") == "claude-sonnet-4-6"
+
+
+def test_generate_uses_db_model_setting(client, meals, ai_env, monkeypatch):
+    """A model saved in Settings reaches the provider call when no env var overrides it."""
+    from unittest.mock import MagicMock
+
+    monkeypatch.delenv("AI_MODEL_ANTHROPIC", raising=False)
+    client.put("/api/settings", json={"ai_model_anthropic": "claude-haiku-4-5-20251001"})
+
+    mock_instance = MagicMock()
+    mock_instance.messages.create.return_value = MagicMock(
+        content=[MagicMock(type="text", text=json.dumps(_mock_suggestions(meals)))]
+    )
+
+    with patch("anthropic.Anthropic", return_value=mock_instance):
+        with ai_env:
+            r = client.post("/api/ai/generate", json={"week_start": "2025-01-05"})
+
+    assert r.status_code == 200
+    assert mock_instance.messages.create.call_args.kwargs["model"] == "claude-haiku-4-5-20251001"
 
 
 # ── Provider response parsing guards ─────────────────────────────────────────
@@ -900,7 +955,7 @@ def test_call_anthropic_skips_leading_non_text_blocks():
     )
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
-        result = _call_anthropic("test prompt", "sk-test")
+        result = _call_anthropic("test prompt", "sk-test", "claude-sonnet-4-6")
 
     assert result == [{"day_of_week": 0}]
 
@@ -917,7 +972,7 @@ def test_call_anthropic_no_text_block_raises_value_error():
 
     with patch("anthropic.Anthropic", return_value=mock_instance):
         try:
-            _call_anthropic("test prompt", "sk-test")
+            _call_anthropic("test prompt", "sk-test", "claude-sonnet-4-6")
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "no text content" in str(exc)
@@ -935,7 +990,7 @@ def test_call_openai_none_content_raises_value_error():
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         try:
-            _call_openai("test prompt", "sk-test")
+            _call_openai("test prompt", "sk-test", "gpt-4o")
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "empty response" in str(exc)
@@ -952,8 +1007,7 @@ def test_call_openai_compatible_forwards_base_url_and_model():
     )
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance) as mock_client:
-        with patch.dict(os.environ, {"AI_MODEL_OPENAI_COMPATIBLE": "local-llama"}):
-            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+        result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "local-llama")
 
     assert result == [{"day_of_week": 0}]
     mock_client.assert_called_once()
@@ -975,7 +1029,7 @@ def test_call_openai_compatible_default_max_tokens():
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         with patch.dict(os.environ, {}, clear=True):
-            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
 
     assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 4096
 
@@ -992,7 +1046,7 @@ def test_call_openai_compatible_max_tokens_env_override():
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         with patch.dict(os.environ, {"AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000"}):
-            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
 
     assert mock_instance.chat.completions.create.call_args.kwargs["max_tokens"] == 8000
 
@@ -1010,7 +1064,7 @@ def test_call_openai_compatible_empty_content_raises_clear_error():
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         try:
-            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "empty response" in str(exc).lower()
@@ -1029,7 +1083,7 @@ def test_call_openai_compatible_none_content_raises_clear_error():
 
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         try:
-            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
             assert False, "expected ValueError"
         except ValueError as exc:
             assert "empty response" in str(exc).lower()
@@ -1051,7 +1105,7 @@ def test_call_openai_compatible_allow_reasoning_drops_max_tokens():
             "AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true",
             "AI_MAX_TOKENS_OPENAI_COMPATIBLE": "8000",
         }):
-            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+            result = _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
 
     assert result == [{"day_of_week": 0}]
     assert "max_tokens" not in mock_instance.chat.completions.create.call_args.kwargs
@@ -1071,7 +1125,7 @@ def test_call_openai_compatible_allow_reasoning_empty_content_still_raises():
     with patch("app.routers.ai.OpenAI", return_value=mock_instance):
         with patch.dict(os.environ, {"AI_ALLOW_REASONING_OPENAI_COMPATIBLE": "true"}):
             try:
-                _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1")
+                _call_openai_compatible("test prompt", "sk-test", "https://litellm.home/v1", "gpt-4o")
                 assert False, "expected ValueError"
             except ValueError as exc:
                 assert "empty response" in str(exc).lower()

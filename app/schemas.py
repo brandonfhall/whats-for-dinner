@@ -128,6 +128,9 @@ class SettingsOut(BaseModel):
     ai_provider: str = "anthropic"
     ai_key_configured: bool = False   # True when a key is available (env or DB)
     ai_base_url: str = ""             # only used when ai_provider="openai_compatible"
+    ai_model_anthropic: str = ""      # blank falls back to the built-in default
+    ai_model_openai: str = ""
+    ai_model_openai_compatible: str = ""
     custom_instructions: str = ""
 
 
@@ -137,6 +140,9 @@ class SettingsUpdate(BaseModel):
     ai_provider: Optional[str] = None
     ai_api_key: Optional[str] = None  # write-only; never returned in SettingsOut
     ai_base_url: Optional[str] = None
+    ai_model_anthropic: Optional[str] = None
+    ai_model_openai: Optional[str] = None
+    ai_model_openai_compatible: Optional[str] = None
     custom_instructions: Optional[str] = None
 
 
