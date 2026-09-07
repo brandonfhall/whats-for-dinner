@@ -107,7 +107,7 @@ belong in the gitignored `.claude/settings.local.json`):
 
 | Event | Trigger | What it does |
 |-------|---------|--------------|
-| `PreToolUse` | a Bash command containing `git commit` | Denies the commit when the current branch is `main` or `develop` |
+| `PreToolUse` | a Bash or PowerShell command containing `git commit` | Denies the commit when the current branch is `main` or `develop` |
 | `PostToolUse` | `Edit`/`Write` on a `.py` file under `app/` or `tests/` | Runs flake8 (same gate as CI) and, for `app/models.py`, reminds about the manual migration in `_run_migrations()` |
 
 The PostToolUse logic lives in `.claude/hooks/post_edit.py`. Both hook commands
