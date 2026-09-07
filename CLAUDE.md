@@ -100,6 +100,20 @@ The app targets mobile-first with `sm:` (640px) and `lg:` (1024px) breakpoints. 
 | `docker-publish.yml` | push to `main` or `develop`, version tags, monthly schedule | Builds multi-arch image and pushes to Docker Hub |
 | `sync-develop.yml` | push to `main` | Auto-merges `main` into `develop`; resolves conflicts by favouring `main` |
 
+## Claude Code Hooks
+
+`.claude/settings.json` is committed and configures two hooks (personal overrides
+belong in the gitignored `.claude/settings.local.json`):
+
+| Event | Trigger | What it does |
+|-------|---------|--------------|
+| `PreToolUse` | a Bash command containing `git commit` | Denies the commit when the current branch is `main` or `develop` |
+| `PostToolUse` | `Edit`/`Write` on a `.py` file under `app/` or `tests/` | Runs flake8 (same gate as CI) and, for `app/models.py`, reminds about the manual migration in `_run_migrations()` |
+
+The PostToolUse logic lives in `.claude/hooks/post_edit.py`. Both hook commands
+probe for `.venv/Scripts/python.exe` then `.venv/bin/python`, so they work on
+Windows and POSIX. Review or disable them with `/hooks`.
+
 ## Adding New Features
 
 1. **Database changes**: Add columns to `app/models.py`, add migration in `app/database.py:_run_migrations()`, new tables auto-created by `create_all()`

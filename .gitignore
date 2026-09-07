@@ -8,7 +8,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 .vscode/
 
 # Frontend build outputs — generated at Docker build time, not committed

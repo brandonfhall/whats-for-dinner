@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "payload=$(cat); case \"$payload\" in *\"git commit\"*) branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); case \"$branch\" in main|develop) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"CLAUDE.md: never commit directly to %s. Cut a feature branch from develop and open a PR into develop.\"}}' \"$branch\";; esac;; esac",
+            "statusMessage": "Checking branch policy...",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "DIR=\"${CLAUDE_PROJECT_DIR:-.}\"; if [ -x \"$DIR/.venv/Scripts/python.exe\" ]; then PY=\"$DIR/.venv/Scripts/python.exe\"; elif [ -x \"$DIR/.venv/bin/python\" ]; then PY=\"$DIR/.venv/bin/python\"; else PY=python3; fi; \"$PY\" \"$DIR/.claude/hooks/post_edit.py\"",
+            "statusMessage": "Linting edited file...",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
