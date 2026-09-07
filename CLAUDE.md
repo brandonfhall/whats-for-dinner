@@ -107,12 +107,21 @@ belong in the gitignored `.claude/settings.local.json`):
 
 | Event | Trigger | What it does |
 |-------|---------|--------------|
-| `PreToolUse` | a Bash or PowerShell command containing `git commit` | Denies the commit when the current branch is `main` or `develop` |
+| `PreToolUse` | a Bash or PowerShell command that actually invokes `git commit` | Denies the commit when the current branch is `main` or `develop` |
 | `PostToolUse` | `Edit`/`Write` on a `.py` file under `app/` or `tests/` | Runs flake8 (same gate as CI) and, for `app/models.py`, reminds about the manual migration in `_run_migrations()` |
 
-The PostToolUse logic lives in `.claude/hooks/post_edit.py`. Both hook commands
-probe for `.venv/Scripts/python.exe` then `.venv/bin/python`, so they work on
-Windows and POSIX. Review or disable them with `/hooks`.
+The logic lives in `.claude/hooks/pre_bash.py` and `.claude/hooks/post_edit.py`.
+Both hook commands probe for `.venv/Scripts/python.exe` then `.venv/bin/python`,
+so they work on Windows and POSIX. Review or disable them with `/hooks`.
+
+The commit guard matches `git commit` only at a command boundary — start of
+input, a newline, a separator (`;` `&` `|` `(` `{`), or a keyword that
+introduces a command — so quoted prose such as a PR body or
+`grep -r "git commit"` is not mistaken for a commit, while the compound
+`git add -A && git commit` form still is. A backtick is deliberately not a
+boundary: a markdown code span is far more common than legacy backtick
+command substitution. A cheap substring test runs first, so commands with no
+`git commit` text anywhere never start a Python process.
 
 ## Adding New Features
 
