@@ -1,7 +1,7 @@
-fastapi==0.143.0
+fastapi==0.143.3
 uvicorn[standard]==0.54.0
-sqlalchemy==2.1.4
-pydantic==2.14.0
-anthropic==1.13.0
-openai==3.28.0
+sqlalchemy==2.1.5
+pydantic==2.14.1
+anthropic==1.15.0
+openai==3.33.0
 python-dotenv==1.2.4
